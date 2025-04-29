@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Button?>
+
+<VBox alignment="CENTER" spacing="15" style="-fx-background-color: #f4f4f4;" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="apt.textclient.SignUpController">
+<padding>
+    <Insets top="20" right="20" bottom="20" left="20"/>
+</padding>
+<Label text="Collaborative Text Editor" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+<TextField fx:id="usernameField" promptText="Enter your username" maxWidth="300"/>
+<HBox spacing="10" alignment="CENTER">
+    <Button fx:id="newDocButton" text="Start New Document" style="-fx-background-color: #4CAF50; -fx-text-fill: white;" onAction="#startNewDocument"/>
+    <Button fx:id="uploadFileButton" text="Upload File" style="-fx-background-color: #2196F3; -fx-text-fill: white;" onAction="#uploadFile"/>
+    <Button fx:id="joinSessionButton" text="Join Session" style="-fx-background-color: #FFC107; -fx-text-fill: black;" onAction="#joinSession"/>
+</HBox>
+<TextField fx:id="sessionCodeField" promptText="Enter session code" maxWidth="300"/>
+</VBox>

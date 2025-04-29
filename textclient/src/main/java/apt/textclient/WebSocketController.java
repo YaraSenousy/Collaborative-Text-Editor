@@ -20,15 +20,20 @@ import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
-public class controller {
+public class WebSocketController {
     private StompSession stompSession;
     private String username;
     private String docId;
     private CRDTTree documentTree;
 
-    public void initializeData( String username, String docId) {
-        this.username = username;
+    public CRDTTree getDocumentTree(){
+        return this.documentTree;
+    }
+    public void  setDocId(String docId){
         this.docId = docId;
+    }
+    public void initializeData( String username,String docId) {
+        this.username = username;
         this.documentTree = new CRDTTree();
         connectToWebSocket(username, docId);
         // Subscribe to the chat room
@@ -76,7 +81,7 @@ public class controller {
                         public void onSuccess(StompSession session) {
                             stompSession = session;
                             System.out.println("Successfully connected");
-                            // Initialize subscriptions here if needed
+
                         }
 
                         @Override
@@ -100,21 +105,14 @@ public class controller {
             });
         }
     }
-    private void handleDocChange(long clock,String parentId, char content,int operation) {
-        /*String content = messageField.getText().trim();
-        if (!content.isEmpty()) {
-            // Send the message to the WebSocket server
-            String destination = "/app/chat/" + docId;
-            ChatMessage message = new ChatMessage();
-            message.setUsername(username);
-            message.setContent(content);
-            stompSession.send(destination, message);
-            messageField.clear();
-        }*/
-        //handling ba2a ezay hangeeb 7agat el node el gedeeda 3ashan ne intialise newChange
-        Node newChange= new Node(this.username,clock,parentId,content,operation);
+
+    public void sendChange(Node newChange) {
         String destination = "/app/document/" + docId;
         stompSession.send(destination, newChange);
+    }
+
+    public long getClock() {
+        return System.currentTimeMillis();
     }
 }
 class MyStompSessionHandler extends StompSessionHandlerAdapter {
