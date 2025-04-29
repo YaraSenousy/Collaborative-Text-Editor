@@ -24,7 +24,7 @@ public class WebSocketController {
     private StompSession stompSession;
     private String username;
     private String docId;
-    private CRDTTree documentTree;
+    private CRDTTree documentTree = new CRDTTree();
 
     public CRDTTree getDocumentTree(){
         return this.documentTree;
@@ -32,9 +32,11 @@ public class WebSocketController {
     public void  setDocId(String docId){
         this.docId = docId;
     }
+    public void setDocumentTree(CRDTTree tree){
+        this.documentTree = tree;
+    }
     public void initializeData( String username,String docId) {
         this.username = username;
-        this.documentTree = new CRDTTree();
         connectToWebSocket(username, docId);
         // Subscribe to the chat room
         String topic = "/topic/document/" + docId;
