@@ -4,9 +4,10 @@ import apt.textserver.model.AccessResponse;
 import apt.textserver.model.CreateResponse;
 import apt.textserver.model.Document;
 import apt.textserver.model.Node;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+//import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -43,8 +44,10 @@ public class DocumentService {
         String readPassword = generateRandomPassword();
         String writePassword = generateRandomPassword();
         doc.setId(docId);
-        doc.setReadPassword(BCrypt.hashpw(readPassword, BCrypt.gensalt()));
-        doc.setWritePassword(BCrypt.hashpw(writePassword, BCrypt.gensalt()));
+        //doc.setReadPassword(BCrypt.hashpw(readPassword, BCrypt.gensalt()));
+        //doc.setWritePassword(BCrypt.hashpw(writePassword, BCrypt.gensalt()));
+        doc.setReadPassword(readPassword);
+        doc.setWritePassword(writePassword);
         documents.put(doc.getId(), doc);
         CreateResponse response = new CreateResponse();
         response.setDocId(doc.getId());
@@ -56,12 +59,14 @@ public class DocumentService {
     public AccessResponse grantAccess(String password){
         AccessResponse response = new AccessResponse();
         for (Document doc : documents.values()){
-            if (BCrypt.checkpw(password, doc.getReadPassword())){
+            //if (BCrypt.checkpw(password, doc.getReadPassword())){
+            if(Objects.equals(password, doc.getReadPassword())) {
                 response.setDocId(doc.getId());
                 response.setWritePermission(false);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
                 return response;
-            } else if (BCrypt.checkpw(password, doc.getWritePassword())){
+                //} else if (BCrypt.checkpw(password, doc.getWritePassword())){
+            }else if (Objects.equals(password, doc.getWritePassword())){
                 response.setDocId(doc.getId());
                 response.setWritePermission(true);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
