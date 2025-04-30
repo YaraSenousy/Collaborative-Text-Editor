@@ -9,6 +9,7 @@ module apt.textclient {
     requires spring.core;
     requires java.net.http;
     requires com.fasterxml.jackson.databind;
+    requires spring.web;
 
     opens apt.textclient to javafx.fxml;
     exports apt.textclient;

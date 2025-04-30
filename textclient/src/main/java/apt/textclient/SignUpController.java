@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.web.client.RestTemplate;
 
 public class SignUpController {
     @FXML
@@ -29,7 +30,7 @@ public class SignUpController {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String SERVER_URL = "http://localhost:8080";
-
+    private static final RestTemplate restTemplate = new RestTemplate();
     public void initialize() {
         wsController = new WebSocketController();
     }
@@ -38,22 +39,22 @@ public class SignUpController {
     private void startNewDocument() {
         if (validateUsername()) {
             String username = usernameField.getText();
-            try {
+            //try {
                 // Send HTTP request to create a new document
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(SERVER_URL + "/createDocument"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString("[]")) // Empty node list for new document
-                        .build();
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-
+//                HttpRequest request = HttpRequest.newBuilder()
+//                        .uri(URI.create(SERVER_URL + "/createDocument"))
+//                        .header("Content-Type", "application/json")
+//                        .POST(HttpRequest.BodyPublishers.ofString("[]")) // Empty node list for new document
+//                        .build();
+//                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+//                CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
+                CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
                 String docId = createResponse.getDocumentId();
                 wsController.initializeData(username,docId);
                 switchToSessionPage(username, docId, true);
-            } catch (IOException | InterruptedException e) {
-                showAlert("Error", "Failed to create document: " + e.getMessage());
-            }
+//            } catch (IOException | InterruptedException e) {
+//                showAlert("Error", "Failed to create document: " + e.getMessage());
+//            }
         }
     }
 
@@ -65,7 +66,7 @@ public class SignUpController {
             fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
             File file = fileChooser.showOpenDialog(usernameField.getScene().getWindow());
             if (file != null) {
-                try {
+//                try {
 
                     // Import file to create Node list
                     List<Node> nodes = wsController.getDocumentTree().importFile(username, wsController.getClock(), file.getAbsolutePath());
@@ -74,23 +75,23 @@ public class SignUpController {
                         return;
                     }
 
-                    // Send HTTP request to create document with nodes
-                    String nodesJson = objectMapper.writeValueAsString(nodes);
-                    HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create(SERVER_URL + "/createDocument"))
-                            .header("Content-Type", "application/json")
-                            .POST(HttpRequest.BodyPublishers.ofString(nodesJson))
-                            .build();
-                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                    CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-
+//                    // Send HTTP request to create document with nodes
+//                    String nodesJson = objectMapper.writeValueAsString(nodes);
+//                    HttpRequest request = HttpRequest.newBuilder()
+//                            .uri(URI.create(SERVER_URL + "/createDocument"))
+//                            .header("Content-Type", "application/json")
+//                            .POST(HttpRequest.BodyPublishers.ofString(nodesJson))
+//                            .build();
+//                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+//                    CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
+                    CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", nodes, CreateResponse.class);
                     String docId = createResponse.getDocumentId();
                     wsController.initializeData(username,docId);
                     nodes.forEach(wsController::sendChange); // Send nodes to WebSocket for synchronization
                     switchToSessionPage(username, docId, true);
-                } catch (IOException | InterruptedException e) {
-                    showAlert("Error", "Failed to create document: " + e.getMessage());
-                }
+//                } catch (IOException | InterruptedException e) {
+//                    showAlert("Error", "Failed to create document: " + e.getMessage());
+//                }
             }else{
                 showAlert("Error", "Couldn't open file");
             }
