@@ -10,6 +10,7 @@ module apt.textclient {
     requires java.net.http;
     requires com.fasterxml.jackson.databind;
     requires spring.web;
+    requires static lombok;
 
     opens apt.textclient to javafx.fxml;
     exports apt.textclient;

@@ -1,6 +1,11 @@
 package apt.textclient;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.TreeSet;
 import java.util.Comparator;
+@Getter
+@Setter
 public class Node {
     final String id;
     final long clock;

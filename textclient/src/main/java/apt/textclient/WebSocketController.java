@@ -38,22 +38,7 @@ public class WebSocketController {
     public void initializeData( String username,String docId) {
         this.username = username;
         connectToWebSocket(username, docId);
-        System.out.println("docId after connecttowebsock"+docId);
-        // Subscribe to the chat room
-        String topic = "/topic/document/" + docId;
-        stompSession.subscribe(topic, new StompFrameHandler() {
-
-            @Override
-            public Type getPayloadType(StompHeaders headers) {
-                return Node.class; // Expected payload type
-            }
-            @Override
-            public void handleFrame(StompHeaders headers, Object payload) {
-                Node change = (Node) payload;
-                handleReceivedNode(change);
-
-            }
-        });
+        System.out.println("docId after connecttowebsock "+docId+" username: "+username);
     }
     private void handleReceivedNode(Node newnNode){
         if (newnNode.getOperation() == 0){
@@ -84,7 +69,21 @@ public class WebSocketController {
                         public void onSuccess(StompSession session) {
                             stompSession = session;
                             System.out.println("Successfully connected");
+                            // Subscribe to the chat room
+                            String topic = "/topic/document/" + docId;
+                            stompSession.subscribe(topic, new StompFrameHandler() {
 
+                                @Override
+                                public Type getPayloadType(StompHeaders headers) {
+                                    return Node.class; // Expected payload type
+                                }
+                                @Override
+                                public void handleFrame(StompHeaders headers, Object payload) {
+                                    Node change = (Node) payload;
+                                    handleReceivedNode(change);
+
+                                }
+                            });
                         }
 
                         @Override

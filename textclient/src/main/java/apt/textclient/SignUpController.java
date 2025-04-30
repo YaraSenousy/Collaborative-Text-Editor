@@ -17,6 +17,8 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -47,14 +49,17 @@ public class SignUpController {
                 headers.setContentType(MediaType.APPLICATION_JSON);
 
                 HttpEntity<String> request = new HttpEntity<>("[]", headers);
+                RestTemplate restTemplate = new RestTemplate();
+                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
                 CreateResponse response = restTemplate.postForObject(
                         SERVER_URL + "/createDocument",
                         request,
                         CreateResponse.class
                 );
-                String docId = response.getDocumentId();
-                System.out.println("docId from signupcontroller"+docId);
+                String docId = response.getDocId();
+                System.out.println(response.getWritePassword());
+                System.out.println(response.getReadPassword());
                 wsController.initializeData(username,docId);
                 switchToSessionPage(username, docId, true);
             } catch (Exception e) {
@@ -106,7 +111,7 @@ public class SignUpController {
 //                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 //                    CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
                     CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", nodes, CreateResponse.class);
-                    String docId = createResponse.getDocumentId();
+                    String docId = createResponse.getDocId();
                     wsController.initializeData(username,docId);
                     nodes.forEach(wsController::sendChange); // Send nodes to WebSocket for synchronization
                     switchToSessionPage(username, docId, true);
