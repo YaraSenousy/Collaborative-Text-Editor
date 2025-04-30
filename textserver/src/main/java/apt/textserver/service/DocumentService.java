@@ -7,6 +7,7 @@ import apt.textserver.model.Node;
 //import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
+import javax.print.Doc;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +35,13 @@ public class DocumentService {
         byte[] bytes = new byte[12]; // 12 bytes = 96-bit entropy
         random.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+    public void adduser(String docId, String username){
+        Document doc = documents.get(docId);
+        if (doc == null){
+            return;
+        }
+        doc.addUser(username);
     }
     public CreateResponse createDocument(ArrayList<Node> importFile) {
         Document doc = new Document();
