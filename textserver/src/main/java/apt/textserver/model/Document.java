@@ -12,8 +12,10 @@ public class Document {
     String readPassword;
     String writePassword;
     ConcurrentLinkedQueue<Node> changesNodes = new ConcurrentLinkedQueue<>();
+    ConcurrentLinkedQueue<String> users = new ConcurrentLinkedQueue<String>();
 
     public void addChange(Node change) {
         changesNodes.add(change);
     }
+    public void addUser(String username){users.add(username);}
 }

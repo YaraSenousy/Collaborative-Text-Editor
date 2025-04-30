@@ -7,6 +7,6 @@ import lombok.Setter;
 public class AccessResponse
 {
     String docId;
-    boolean writePermission;
+    boolean writePermission; //true for write access, false for read access
     Node [] documentNodes;
 }
