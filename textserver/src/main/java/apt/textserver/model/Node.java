@@ -1,7 +1,13 @@
 package apt.textserver.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.TreeSet;
 import java.util.Comparator;
+@Getter
+@Setter
 public class Node {
     final String id;
     final long clock;
@@ -9,6 +15,7 @@ public class Node {
     final char content;
     final String userId;
     boolean isDeleted;
+    @JsonIgnore
     TreeSet<Node> children;
     int operation; // 0 for insert, 1 for delete
 
@@ -20,8 +27,8 @@ public class Node {
         this.parentId = parentId;
         this.content = content;
         this.children = new TreeSet<>(
-            Comparator.comparingLong(Node::getClock).reversed()
-                .thenComparing(Node::getUserId)
+                Comparator.comparingLong(Node::getClock).reversed()
+                        .thenComparing(Node::getUserId)
         );
     }
 
@@ -48,5 +55,4 @@ public class Node {
     @Override
     public int hashCode() { return id.hashCode(); }
 }
-
 

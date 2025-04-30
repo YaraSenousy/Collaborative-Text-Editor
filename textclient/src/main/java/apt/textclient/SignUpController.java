@@ -94,13 +94,38 @@ public class SignUpController {
             if (file != null) {
 //                try {
 
-                    // Import file to create Node list
-                    List<Node> nodes = wsController.getDocumentTree().importFile(username, wsController.getClock(), file.getAbsolutePath());
-                    if (nodes == null) {
-                        showAlert("Error", "Failed to import file.");
-                        return;
-                    }
+                // Import file to create Node list
+                ArrayList<Node> nodes = wsController.getDocumentTree().importFile(username, wsController.getClock(), file.getAbsolutePath());
+                if (nodes == null) {
+                    showAlert("Error", "Failed to import file.");
+                    return;
+                }
+                try {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+                    RestTemplate restTemplate = new RestTemplate();
+                    restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                    ArrayList<Node> requestData=new ArrayList<Node>();
+                    requestData.addAll(nodes);
+                    ObjectMapper mapper = new ObjectMapper();
+                    System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(nodes));
+                    CreateResponse response=restTemplate.postForObject(SERVER_URL + "/createDocument" , requestData, CreateResponse.class);
 
+//
+//                    CreateResponse response = restTemplate.postForObject(
+//                            SERVER_URL + "/createDocument",
+//                            request,
+//                            CreateResponse.class
+//                    );
+                    String docId = response.getDocId();
+                    System.out.println(response.getWritePassword());
+                    System.out.println(response.getReadPassword());
+                    wsController.initializeData(username,docId);
+                    //nodes.forEach(wsController::sendChange);
+                    switchToSessionPage(username, docId, true);
+                } catch (Exception e) {
+                    showAlert("Error", e.getMessage());
+                }
 //                    // Send HTTP request to create document with nodes
 //                    String nodesJson = objectMapper.writeValueAsString(nodes);
 //                    HttpRequest request = HttpRequest.newBuilder()
@@ -110,11 +135,11 @@ public class SignUpController {
 //                            .build();
 //                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 //                    CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-                    CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", nodes, CreateResponse.class);
-                    String docId = createResponse.getDocId();
-                    wsController.initializeData(username,docId);
-                    nodes.forEach(wsController::sendChange); // Send nodes to WebSocket for synchronization
-                    switchToSessionPage(username, docId, true);
+                //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", nodes, CreateResponse.class);
+//                    String docId = response.getDocId();
+//                    wsController.initializeData(username,docId);
+//                    nodes.forEach(wsController::sendChange); // Send nodes to WebSocket for synchronization
+//                    switchToSessionPage(username, docId, true);
 //                } catch (IOException | InterruptedException e) {
 //                    showAlert("Error", "Failed to create document: " + e.getMessage());
 //                }

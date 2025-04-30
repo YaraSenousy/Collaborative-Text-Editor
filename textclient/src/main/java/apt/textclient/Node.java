@@ -1,4 +1,5 @@
 package apt.textclient;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,6 +14,7 @@ public class Node {
     final char content;
     final String userId;
     boolean isDeleted;
+    @JsonIgnore
     TreeSet<Node> children;
     int operation; // 0 for insert, 1 for delete
 
