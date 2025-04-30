@@ -20,6 +20,7 @@ public class WebSocketController {
     @SendTo("/topic/document/{docId}")
     public Node handleMessage(Node change, @DestinationVariable String docId) {
         // Todo: insert in the list of nodes corresponding to the document (3ayzeen nezawd service)
+        //TODO: deal with changes in cursor place
         documentService.addChange(docId, change);
         return change;
     }

@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.RestTemplate;
 
 public class SignUpController {
@@ -39,6 +42,24 @@ public class SignUpController {
     private void startNewDocument() {
         if (validateUsername()) {
             String username = usernameField.getText();
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+
+                HttpEntity<String> request = new HttpEntity<>("[]", headers);
+
+                CreateResponse response = restTemplate.postForObject(
+                        SERVER_URL + "/createDocument",
+                        request,
+                        CreateResponse.class
+                );
+                String docId = response.getDocumentId();
+                System.out.println("docId from signupcontroller"+docId);
+                wsController.initializeData(username,docId);
+                switchToSessionPage(username, docId, true);
+            } catch (Exception e) {
+                showAlert("Error", e.getMessage());
+            }
             //try {
                 // Send HTTP request to create a new document
 //                HttpRequest request = HttpRequest.newBuilder()
@@ -48,10 +69,10 @@ public class SignUpController {
 //                        .build();
 //                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 //                CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-                CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
-                String docId = createResponse.getDocumentId();
-                wsController.initializeData(username,docId);
-                switchToSessionPage(username, docId, true);
+                //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
+                //String docId = createResponse.getDocumentId();
+                //wsController.initializeData(username,docId);
+                //switchToSessionPage(username, docId, true);
 //            } catch (IOException | InterruptedException e) {
 //                showAlert("Error", "Failed to create document: " + e.getMessage());
 //            }

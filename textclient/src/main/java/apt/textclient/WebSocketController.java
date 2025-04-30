@@ -38,6 +38,7 @@ public class WebSocketController {
     public void initializeData( String username,String docId) {
         this.username = username;
         connectToWebSocket(username, docId);
+        System.out.println("docId after connecttowebsock"+docId);
         // Subscribe to the chat room
         String topic = "/topic/document/" + docId;
         stompSession.subscribe(topic, new StompFrameHandler() {
