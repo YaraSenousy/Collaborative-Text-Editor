@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
+import java.util.HashMap;
+
 @RestController
 public class DocumentRestController {
     private final DocumentService documentService;
@@ -32,13 +35,12 @@ public class DocumentRestController {
         return documentService.createDocument(importFile);
     }
     @PostMapping("/grantAccess")
-    public AccessResponse grantAccess(@RequestBody String password) {
-
+    public AccessResponse grantAccess(@RequestBody Map<String, String> request) {
+        String password = request.get("password"); // Extract password from the JSON body
         AccessResponse response = documentService.grantAccess(password);
-        if (response == null){
+        if (response == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found");
-        }else{
-            return response;
         }
+        return response;
     }
 }

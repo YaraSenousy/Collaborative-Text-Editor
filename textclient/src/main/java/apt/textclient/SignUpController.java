@@ -14,9 +14,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,12 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestTemplate;
+//bashoof haga
+
+import java.util.Map;
+import java.util.HashMap;
+
+
 
 public class SignUpController {
     @FXML
@@ -35,7 +43,12 @@ public class SignUpController {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String SERVER_URL = "http://localhost:8080";
-    private static final RestTemplate restTemplate = new RestTemplate();
+    private static final RestTemplate restTemplate;
+    static {
+        restTemplate = new RestTemplate();
+        restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+        restTemplate.getMessageConverters().add(new StringHttpMessageConverter(StandardCharsets.UTF_8));
+    }
     public void initialize() {
         wsController = new WebSocketController();
     }
@@ -48,42 +61,30 @@ public class SignUpController {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
 
-                HttpEntity<String> request = new HttpEntity<>("[]", headers);
-                RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                // Configure RestTemplate for JSON
+                //restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
+                // Prepare request entity
+                HttpEntity<String> request = new HttpEntity<>("[]", headers);
+
+                // Call /createDocument endpoint
                 CreateResponse response = restTemplate.postForObject(
                         SERVER_URL + "/createDocument",
                         request,
                         CreateResponse.class
                 );
+
+                // Process response
                 String docId = response.getDocId();
-                System.out.println(response.getWritePassword());
-                System.out.println(response.getReadPassword());
-                wsController.initializeData(username,docId);
+                System.out.println("Write Password: " + response.getWritePassword());
+                System.out.println("Read Password: " + response.getReadPassword());
+                wsController.initializeData(username, docId);
                 switchToSessionPage(username, docId, true);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
             }
-            //try {
-                // Send HTTP request to create a new document
-//                HttpRequest request = HttpRequest.newBuilder()
-//                        .uri(URI.create(SERVER_URL + "/createDocument"))
-//                        .header("Content-Type", "application/json")
-//                        .POST(HttpRequest.BodyPublishers.ofString("[]")) // Empty node list for new document
-//                        .build();
-//                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-//                CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-                //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
-                //String docId = createResponse.getDocumentId();
-                //wsController.initializeData(username,docId);
-                //switchToSessionPage(username, docId, true);
-//            } catch (IOException | InterruptedException e) {
-//                showAlert("Error", "Failed to create document: " + e.getMessage());
-//            }
         }
     }
-
     @FXML
     private void uploadFile() {
         if (validateUsername()) {
@@ -130,27 +131,42 @@ public class SignUpController {
             String username = usernameField.getText();
             String code = sessionCodeField.getText().trim();
             try {
-                // Send HTTP request to join session
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(SERVER_URL + "/grantAccess"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString("{\"password\":\"" + code + "\"}"))
-                        .build();
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                AccessResponse accessResponse = objectMapper.readValue(response.body(), AccessResponse.class);
+                // 1. Prepare headers and body
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
 
-                String docId = accessResponse.getDocumentId();
-                boolean accessType = accessResponse.getAccessType();
-                wsController.initializeData(username,docId);
-                switchToSessionPage(username, docId, accessType);
-            } catch (IOException | InterruptedException e) {
+                Map<String, String> requestBody = new HashMap<>();
+                requestBody.put("password", code);
+
+                // 2. Create HTTP entity
+                HttpEntity<Map<String, String>> request = new HttpEntity<>(requestBody, headers);
+
+                // 3. Send POST request
+                AccessResponse accessResponse = restTemplate.postForObject(
+                        SERVER_URL + "/grantAccess",
+                        request,
+                        AccessResponse.class
+                );
+
+                // 4. Handle response
+                if (accessResponse != null) {
+                    // Use Lombok-generated getters
+                    String docId = accessResponse.getDocId();
+                    boolean writePermission = accessResponse.isWritePermission();
+
+                    wsController.initializeData(username, docId);
+                    switchToSessionPage(username, docId, writePermission);
+                } else {
+                    showAlert("Error", "Invalid session code or server error.");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
                 showAlert("Error", "Failed to join session: " + e.getMessage());
             }
         } else {
             showAlert("Error", "Please enter a username and session code.");
         }
     }
-
     private boolean validateUsername() {
         if (usernameField.getText().isEmpty()) {
             showAlert("Error", "Please enter a username.");
