@@ -1,4 +1,7 @@
 package apt.textclient;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -10,7 +13,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
-
+@Getter
+@Setter
 public class CRDTTree {
     public final Node root;
     private final Map<String, Node> nodeMap = new HashMap<>();

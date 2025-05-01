@@ -174,7 +174,7 @@ public class SignUpController {
 
                 AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess" , requestData, AccessResponse.class);
 
-                String docId = response.getDocumentId();
+                String docId = response.getDocId();
                 boolean accessType = response.getAccessType();
                 Node[] importedNodes = response.getDocumentNodes();
                 for (Node n : importedNodes){

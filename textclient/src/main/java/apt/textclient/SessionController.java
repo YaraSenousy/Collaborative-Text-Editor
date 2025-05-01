@@ -40,19 +40,22 @@ public class SessionController {
 
     private void setupTextAreaListener() {
         textArea.textProperty().addListener((obs, oldValue, newValue) -> {
+            String parentId = wsController.getDocumentTree().getRoot().getId(); // Root node as parent initially
+            long clock = wsController.getClock(); // Assume you have a clock tracker for each user
+            String username = wsController.getUsername(); // Assuming you have a way to get the current user's ID
             //String parentId = wsController.getDocumentTree().getRoot().getId();
             // Handle insertions
             for (int i = 0; i < newValue.length(); i++) {
                 if (i >= oldValue.length() || newValue.charAt(i) != oldValue.charAt(i)) {
-                    //Node newNode = new Node(username, clock++, parentId, newValue.charAt(i), 0);
-                    //wsController.sendChange(newNode);
+                    Node newNode = new Node(username, clock++, parentId, newValue.charAt(i), 0);
+                    wsController.sendChange(newNode);
                 }
             }
             // Handle deletions
             if (newValue.length() < oldValue.length()) {
                 for (int i = newValue.length(); i < oldValue.length(); i++) {
-                    //Node deleteNode = new Node(username, clock++, parentId, '\0', 1);
-                    //wsController.sendChange(deleteNode);
+                    Node deleteNode = new Node(username, clock++, parentId, '\0', 1);
+                    wsController.sendChange(deleteNode);
                 }
             }
             //wsController.setClock(clock);
