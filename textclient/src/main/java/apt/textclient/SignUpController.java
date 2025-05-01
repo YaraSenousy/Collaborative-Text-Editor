@@ -66,7 +66,7 @@ public class SignUpController {
                 showAlert("Error", e.getMessage());
             }
             //try {
-                // Send HTTP request to create a new document
+            // Send HTTP request to create a new document
 //                HttpRequest request = HttpRequest.newBuilder()
 //                        .uri(URI.create(SERVER_URL + "/createDocument"))
 //                        .header("Content-Type", "application/json")
@@ -74,10 +74,10 @@ public class SignUpController {
 //                        .build();
 //                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 //                CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-                //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
-                //String docId = createResponse.getDocumentId();
-                //wsController.initializeData(username,docId);
-                //switchToSessionPage(username, docId, true);
+            //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
+            //String docId = createResponse.getDocumentId();
+            //wsController.initializeData(username,docId);
+            //switchToSessionPage(username, docId, true);
 //            } catch (IOException | InterruptedException e) {
 //                showAlert("Error", "Failed to create document: " + e.getMessage());
 //            }
@@ -156,20 +156,34 @@ public class SignUpController {
             String code = sessionCodeField.getText().trim();
             try {
                 // Send HTTP request to join session
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(SERVER_URL + "/grantAccess"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString("{\"password\":\"" + code + "\"}"))
-                        .build();
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                AccessResponse accessResponse = objectMapper.readValue(response.body(), AccessResponse.class);
+//                HttpRequest request = HttpRequest.newBuilder()
+//                        .uri(URI.create(SERVER_URL + "/grantAccess"))
+//                        .header("Content-Type", "application/json")
+//                        .POST(HttpRequest.BodyPublishers.ofString("{\"password\":\"" + code + "\"}"))
+//                        .build();
+//                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+//                AccessResponse accessResponse = objectMapper.readValue(response.body(), AccessResponse.class);
 
-                String docId = accessResponse.getDocumentId();
-                boolean accessType = accessResponse.getAccessType();
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                RestTemplate restTemplate = new RestTemplate();
+                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                ArrayList<String> requestData=new ArrayList<String>();
+                requestData.add(code);
+                ObjectMapper mapper = new ObjectMapper();
+
+                AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess" , requestData, AccessResponse.class);
+
+                String docId = response.getDocumentId();
+                boolean accessType = response.getAccessType();
+                Node[] importedNodes = response.getDocumentNodes();
+                for (Node n : importedNodes){
+                    wsController.getDocumentTree().insert(n);
+                }
                 wsController.initializeData(username,docId);
                 switchToSessionPage(username, docId, accessType);
-            } catch (IOException | InterruptedException e) {
-                showAlert("Error", "Failed to join session: " + e.getMessage());
+            } catch (Exception e) {
+                showAlert("Error", e.getMessage());
             }
         } else {
             showAlert("Error", "Please enter a username and session code.");

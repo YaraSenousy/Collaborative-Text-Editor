@@ -32,9 +32,9 @@ public class DocumentRestController {
         return documentService.createDocument(importFile);
     }
     @PostMapping("/grantAccess")
-    public AccessResponse grantAccess(@RequestBody String password) {
+    public AccessResponse grantAccess(@RequestBody ArrayList<String> password) {
 
-        AccessResponse response = documentService.grantAccess(password);
+        AccessResponse response = documentService.grantAccess(password.getFirst());
         if (response == null){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found");
         }else{
