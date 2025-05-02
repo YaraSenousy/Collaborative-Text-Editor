@@ -53,9 +53,12 @@ public class SessionController {
         if (!Objects.equals(writerCode, "")) {
             writerCodeBox.setVisible(true);
             readerCodeBox.setVisible(true);
+            writerCodeLabel.setText("Writer Code");
+            readerCodeLabel.setText("Reader Code");
         } else {
             writerCodeBox.setVisible(false);
             readerCodeBox.setVisible(false);
+            writerCodeBox.setManaged(true);
         }
 
         userListView.getItems().add(username + " (Line: 1)");
