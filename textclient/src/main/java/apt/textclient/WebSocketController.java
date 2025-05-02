@@ -31,6 +31,7 @@ public class WebSocketController {
     private String docId;
     private CRDTTree documentTree = new CRDTTree();
     private ObjectMapper objectMapper = new ObjectMapper();
+    private Runnable onDocumentChange;
 
 
     public void initializeData( String username,String docId) {
@@ -45,6 +46,9 @@ public class WebSocketController {
             this.documentTree.insert(newnNode);
         }else{
             this.documentTree.delete(newnNode.getId());
+        }
+        if (onDocumentChange != null) {
+            Platform.runLater(onDocumentChange);
         }
     }
     private void connectToWebSocket(String username, String roomId) {
