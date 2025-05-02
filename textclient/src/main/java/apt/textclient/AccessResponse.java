@@ -1,8 +1,10 @@
-package apt.textserver.model;
+package apt.textclient;
+
+
 
 import lombok.Getter;
 import lombok.Setter;
- 
+
 @Getter @Setter
 public class AccessResponse
 {
@@ -10,3 +12,4 @@ public class AccessResponse
     boolean writePermission; //true for write access, false for read access
     Node [] documentNodes;
 }
+
