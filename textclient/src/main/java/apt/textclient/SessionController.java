@@ -57,7 +57,9 @@ public class SessionController {
             writerCodeBox.setVisible(false);
             readerCodeBox.setVisible(false);
         }
-
+        if(accessPermission){
+            textArea.setEditable(true);
+        } else {textArea.setEditable(false);}
         userListView.getItems().add(username + " (Line: 1)");
         userListView.getItems().add("User2 (Line: 3)");
         userListView.getItems().add("User3 (Line: 5)");
