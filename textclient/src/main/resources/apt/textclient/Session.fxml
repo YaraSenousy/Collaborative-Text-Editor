@@ -22,6 +22,11 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <Button fx:id="exportButton" text="Export Document" onAction="#exportDoc" maxWidth="Infinity" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            <!-- Add Undo and Redo buttons in an HBox -->
+            <HBox spacing="5" alignment="CENTER">
+                <Button fx:id="undoButton" text="Undo" onAction="#undo" maxWidth="Infinity" style="-fx-background-color: #FFC107; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                <Button fx:id="redoButton" text="Redo" onAction="#redo" maxWidth="Infinity" style="-fx-background-color: #FFC107; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            </HBox>
             <HBox fx:id="writerCodeBox" spacing="5" alignment="CENTER_LEFT">
                 <Label fx:id="writerCodeLabel" style="-fx-font-weight: bold;"/>
                 <Button fx:id="copyWriterCodeButton" text="Copy" onAction="#copyWriterCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 12px;"/>
