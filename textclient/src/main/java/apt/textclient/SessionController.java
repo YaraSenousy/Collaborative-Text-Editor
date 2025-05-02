@@ -8,6 +8,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -31,6 +32,10 @@ public class SessionController {
     private Button copyWriterCodeButton;
     @FXML
     private Button copyReaderCodeButton;
+    @FXML
+    private HBox writerCodeBox;
+    @FXML
+    private HBox readerCodeBox;
 
     private WebSocketController wsController;
     private String username;
@@ -46,8 +51,11 @@ public class SessionController {
         this.readerCode = readerCode;
         this.accessPermission = accessPermission;
         if (!Objects.equals(writerCode, "")) {
-            writerCodeLabel.setText("Writer Code");
-            readerCodeLabel.setText("Reader Code");
+            writerCodeBox.setVisible(true);
+            readerCodeBox.setVisible(true);
+        } else {
+            writerCodeBox.setVisible(false);
+            readerCodeBox.setVisible(false);
         }
 
         userListView.getItems().add(username + " (Line: 1)");
