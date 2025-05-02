@@ -9,6 +9,7 @@ import javafx.scene.control.TextArea;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public class SessionController {
     @FXML
@@ -33,9 +34,10 @@ public class SessionController {
         this.writerCode = writerCode;
         this.readerCode = readerCode;
         this.accessPermission = accessPermission;
-
-        writerCodeLabel.setText("Writer Code: " + writerCode);
-        readerCodeLabel.setText("Reader Code: " + readerCode);
+        if (!Objects.equals(writerCode, "")) {
+            writerCodeLabel.setText("Writer Code: " + writerCode);
+            readerCodeLabel.setText("Reader Code: " + readerCode);
+        }
 
         userListView.getItems().add(username + " (Line: 1)");
         userListView.getItems().add("User2 (Line: 3)");
@@ -58,26 +60,33 @@ public class SessionController {
 
             if (changeIndex >= 0) {
                 long clock = wsController.getClock();
-                String parentId;
 
-                // Determine the parentId based on the change position
-                if (changeIndex == 0) {
-                    parentId = tree.getRoot().getId(); // Insert at beginning
-                } else {
-                    parentId = findNodeIdAtPosition(tree, changeIndex - 1);
-                    if (parentId == null) {
-                        parentId = tree.getRoot().getId(); // Fallback to root
-                    }
-                }
 
                 if (newValue.length() > oldValue.length()) {
+                    String parentId;
+
+                    // Determine the parentId based on the change position
+                    if (changeIndex == 0) {
+                        parentId = tree.getRoot().getId(); // Insert at beginning
+                    } else {
+                        parentId = findNodeIdAtPosition(tree, changeIndex - 1);
+
+                    }
                     // Insertion
-                    char newChar = newValue.charAt(changeIndex);
-                    Node newNode = new Node(username, clock, parentId, newChar, 0);
-                    wsController.sendChange(newNode);
+                    int insertCount = newValue.length() - oldValue.length();
+                    for (int i = 0; i < insertCount; i++) {
+                        int newIndex = changeIndex + i;
+                        char newChar = newValue.charAt(newIndex);
+                        clock = wsController.getClock();
+                        Node newNode = new Node(username, clock, parentId, newChar, 0);
+                        wsController.sendChange(newNode);
+                        parentId = newNode.getId();
+                    }
                 } else if (newValue.length() < oldValue.length()) {
                     // Deletion
-                    Node deleteNode = new Node(username, clock, parentId, '\0', 1);
+                    String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex );;
+                    Node deleteNode = new Node(username, clock, tree.getRoot().getId(), ' ', 1);
+                    deleteNode.setId(nodeIdToDelete);
                     wsController.sendChange(deleteNode);
                 }
             }
@@ -121,10 +130,12 @@ public class SessionController {
     private void updateTextArea() {
         Platform.runLater(() -> {
             isUpdatingTextArea = true;
+            int currentCaretPosition = textArea.getCaretPosition();
             List<Character> chars = wsController.getDocumentTree().traverse();
             StringBuilder content = new StringBuilder();
             chars.forEach(content::append);
             textArea.setText(content.toString());
+            textArea.positionCaret(Math.min(currentCaretPosition, textArea.getText().length()));
             isUpdatingTextArea = false;
         });
     }

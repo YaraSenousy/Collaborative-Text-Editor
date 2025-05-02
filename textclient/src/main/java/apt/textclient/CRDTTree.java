@@ -80,16 +80,21 @@ public class CRDTTree {
 
     public boolean export(String filename){
         List<Character> list = this.traverse();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
-            for (char c : list) {
-                writer.write(c); 
+        lock.readLock().lock();
+        try{
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+                for (char c : list) {
+                    writer.write(c);
+                }
+                writer.flush();
+                System.out.println("Successfully wrote to file.");
+                return true;
+            } catch (IOException e) {
+                System.err.println("Error writing to file: " + e.getMessage());
+                return false;
             }
-            writer.flush(); 
-            System.out.println("Successfully wrote to file.");
-            return true;
-        } catch (IOException e) {
-            System.err.println("Error writing to file: " + e.getMessage());
-            return false;
+        } finally {
+            lock.readLock().unlock();
         }
     }
     public ArrayList <Node> importFile(String userId, long initialTimestamp, String filename) {

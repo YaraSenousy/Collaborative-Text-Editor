@@ -10,7 +10,7 @@ import java.util.Comparator;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Node {
-    final String id;
+    String id;
     final long clock;
     final String parentId;
     final char content;
