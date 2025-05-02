@@ -1,6 +1,7 @@
 package apt.textclient;
 
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -8,14 +9,13 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class SessionController {
     @FXML
@@ -36,6 +36,10 @@ public class SessionController {
     private HBox writerCodeBox;
     @FXML
     private HBox readerCodeBox;
+    @FXML
+    private Button undoButton;
+    @FXML
+    private Button redoButton;
 
     private WebSocketController wsController;
     private String username;
@@ -43,6 +47,9 @@ public class SessionController {
     private String readerCode;
     private boolean accessPermission;
     private boolean isUpdatingTextArea = false;
+    private Stack<String> undoStack = new Stack<>();
+    private Stack<String> redoStack = new Stack<>();
+
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -68,6 +75,18 @@ public class SessionController {
         updateTextArea();
         setupTextAreaListener();
         wsController.setOnDocumentChange(this::updateTextArea);
+
+        textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+            if (event.isControlDown() && event.getCode() == KeyCode.Z) {
+                if (event.isShiftDown()) {
+                    // lw shift is pressed yeb2a redo
+                    redo();
+                } else {
+                    undo(); //lw la yeb2a undo
+                }
+                event.consume();
+            }
+        });
     }
 
     private void setupTextAreaListener() {
@@ -111,6 +130,7 @@ public class SessionController {
                     deleteNode.setId(nodeIdToDelete);
                     wsController.sendChange(deleteNode);
                 }
+                saveState();
             }
         });
     }
@@ -159,6 +179,7 @@ public class SessionController {
             textArea.setText(content.toString());
             textArea.positionCaret(Math.min(currentCaretPosition, textArea.getText().length()));
             isUpdatingTextArea = false;
+            saveState();
         });
     }
     @FXML
@@ -188,4 +209,68 @@ public class SessionController {
         content.putString(readerCode);
         clipboard.setContent(content);
     }
+    private void saveState() {
+        String currentContent = textArea.getText();
+        if (undoStack.isEmpty() || !undoStack.peek().equals(currentContent)) {
+            undoStack.push(currentContent);
+            redoStack.clear(); // bnclear el redo stack on changes
+        }
+    }
+    @FXML
+    private void redo() {
+        if (!redoStack.isEmpty() && accessPermission) {
+            String redoContent = redoStack.pop();
+            undoStack.push(redoContent);
+            applyContent(redoContent);
+        }
+    }
+    @FXML
+    private void undo() {
+        if (undoStack.size() > 1 && accessPermission) {
+            String currentContent = undoStack.pop();
+            redoStack.push(currentContent);
+            String previousContent = undoStack.peek();
+            applyContent(previousContent);
+        }
+    }
+    private void applyContent(String content) {
+        if (!accessPermission) return;
+
+        String currentContent = textArea.getText();
+        int changeIndex = findFirstChangeIndex(currentContent, content);
+        CRDTTree tree = wsController.getDocumentTree();
+        long clock = wsController.getClock();
+
+        isUpdatingTextArea = true;
+        // Handle deletions
+        if (content.length() < currentContent.length()) {
+            int deleteCount = currentContent.length() - content.length();
+            for (int i = 0; i < deleteCount; i++) {
+                String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex);
+                if (nodeIdToDelete != null) {
+                    Node deleteNode = new Node(username, clock, tree.getRoot().getId(), ' ', 1);
+                    deleteNode.setId(nodeIdToDelete);
+                    wsController.sendChange(deleteNode);
+                    clock = wsController.getClock();
+                }
+            }
+        }
+        // Handle insertions
+        else if (content.length() > currentContent.length()) {
+            String parentId = changeIndex == 0 ? tree.getRoot().getId() : findNodeIdAtPosition(tree, changeIndex - 1);
+            int insertCount = content.length() - currentContent.length();
+            for (int i = 0; i < insertCount; i++) {
+                int newIndex = changeIndex + i;
+                char newChar = content.charAt(newIndex);
+                Node newNode = new Node(username, clock, parentId, newChar, 0);
+                wsController.sendChange(newNode);
+                parentId = newNode.getId();
+                clock = wsController.getClock();
+            }
+        }
+        textArea.setText(content);
+        isUpdatingTextArea = false;
+    }
+
+
 }

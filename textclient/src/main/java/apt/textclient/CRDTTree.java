@@ -2,6 +2,7 @@ package apt.textclient;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.net.ssl.SSLSession;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -117,5 +118,8 @@ public class CRDTTree {
             System.err.println("Error reading file: " + e.getMessage());
             return null;
         }
+    }
+
+    public Node getRoot() { return root;
     }
 }
