@@ -3,11 +3,13 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Button?>
 
-<BorderPane style="-fx-background-color: #ffffff;" xmlns="http://javafx.com/fxml" xmlns:fx="http://javafx.com/fxml" fx:controller="apt.textclient.SessionController">
+<BorderPane style="-fx-background-color: #ffffff;" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="apt.textclient.SessionController">
     <padding>
         <Insets top="10" right="10" bottom="10" left="10"/>
     </padding>
@@ -19,8 +21,15 @@
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
-            <Label fx:id="writerCodeLabel" style="-fx-font-weight: bold;"/>
-            <Label fx:id="readerCodeLabel" style="-fx-font-weight: bold;"/>
+            <Button fx:id="exportButton" text="Export Document" onAction="#exportDoc" maxWidth="Infinity" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <Label fx:id="writerCodeLabel" style="-fx-font-weight: bold;"/>
+                <Button fx:id="copyWriterCodeButton" text="Copy" onAction="#copyWriterCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 12px;"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <Label fx:id="readerCodeLabel" style="-fx-font-weight: bold;"/>
+                <Button fx:id="copyReaderCodeButton" text="Copy" onAction="#copyReaderCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 12px;"/>
+            </HBox>
             <Label text="Active Users" style="-fx-font-weight: bold;"/>
             <ListView fx:id="userListView"/>
         </VBox>

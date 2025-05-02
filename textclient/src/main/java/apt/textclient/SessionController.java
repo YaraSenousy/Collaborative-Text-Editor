@@ -2,10 +2,15 @@ package apt.textclient;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -20,6 +25,12 @@ public class SessionController {
     private Label readerCodeLabel;
     @FXML
     private ListView<String> userListView;
+    @FXML
+    private Button exportButton;
+    @FXML
+    private Button copyWriterCodeButton;
+    @FXML
+    private Button copyReaderCodeButton;
 
     private WebSocketController wsController;
     private String username;
@@ -35,8 +46,8 @@ public class SessionController {
         this.readerCode = readerCode;
         this.accessPermission = accessPermission;
         if (!Objects.equals(writerCode, "")) {
-            writerCodeLabel.setText("Writer Code: " + writerCode);
-            readerCodeLabel.setText("Reader Code: " + readerCode);
+            writerCodeLabel.setText("Writer Code");
+            readerCodeLabel.setText("Reader Code");
         }
 
         userListView.getItems().add(username + " (Line: 1)");
@@ -138,5 +149,32 @@ public class SessionController {
             textArea.positionCaret(Math.min(currentCaretPosition, textArea.getText().length()));
             isUpdatingTextArea = false;
         });
+    }
+    @FXML
+    private void exportDoc(){
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export document");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+
+        File file = fileChooser.showSaveDialog(exportButton.getScene().getWindow());
+        if(file!=null){
+            wsController.getDocumentTree().export(file.getAbsolutePath());
+        }
+    }
+    @FXML
+    private void copyWriterCode(){
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+
+        content.putString(writerCode);
+        clipboard.setContent(content);
+    }
+    @FXML
+    private void copyReaderCode(){
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+
+        content.putString(readerCode);
+        clipboard.setContent(content);
     }
 }
