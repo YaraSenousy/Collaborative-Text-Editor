@@ -23,6 +23,8 @@ import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+@Getter
+@Setter
 public class WebSocketController {
     private StompSession stompSession;
     private String username;
@@ -30,18 +32,10 @@ public class WebSocketController {
     private CRDTTree documentTree = new CRDTTree();
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public CRDTTree getDocumentTree(){
-        return this.documentTree;
-    }
-    public String getUsername(){return username;}
-    public void  setDocId(String docId){
-        this.docId = docId;
-    }
-    public void setDocumentTree(CRDTTree tree){
-        this.documentTree = tree;
-    }
+
     public void initializeData( String username,String docId) {
         this.username = username;
+        this.docId = docId;
         connectToWebSocket(username, docId);
         System.out.println("docId after connecttowebsock "+docId+" username: "+username);
     }
@@ -81,13 +75,12 @@ public class WebSocketController {
 
                                 @Override
                                 public Type getPayloadType(StompHeaders headers) {
-                                    return String.class; // Expected payload type
+                                    return Node.class; // Expected payload type
                                 }
                                 @Override
                                 public void handleFrame(StompHeaders headers, Object payload) {
                                     try{
-                                    String jsonString = (String) payload;
-                                    Node change = objectMapper.readValue(jsonString, Node.class);
+                                    Node change = (Node) payload;
                                     handleReceivedNode(change);}
                                     catch(Exception e){
                                         System.err.println(e.getMessage());
@@ -120,12 +113,10 @@ public class WebSocketController {
     }
 
     public void sendChange(Node newChange) {
-        String destination = "/app/document/" + docId;
-        try{
-        String jsonString = objectMapper.writeValueAsString(newChange);
-        stompSession.send(destination, jsonString);}
-        catch(Exception e){
-            System.err.println(e.getMessage());
+        if (stompSession != null && stompSession.isConnected()) {
+            stompSession.send("/app/document/" + docId, newChange);
+        } else {
+            System.err.println("STOMP session not connected");
         }
     }
 

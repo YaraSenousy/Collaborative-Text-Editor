@@ -1,22 +1,15 @@
 package apt.textclient;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+
+
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter
-@Setter
-
+@Getter @Setter
 public class AccessResponse
 {
     String docId;
-    boolean writePermission;
+    boolean writePermission; //true for write access, false for read access
     Node [] documentNodes;
-    String getDocumentId(){
-        return this.docId;
-    }
-
-    boolean getAccessType(){
-        return  this.writePermission;
-    }
 }
+

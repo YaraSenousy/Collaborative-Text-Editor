@@ -19,7 +19,8 @@
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
-            <Label fx:id="sessionCodeLabel" style="-fx-font-weight: bold;"/>
+            <Label fx:id="writerCodeLabel" style="-fx-font-weight: bold;"/>
+            <Label fx:id="readerCodeLabel" style="-fx-font-weight: bold;"/>
             <Label text="Active Users" style="-fx-font-weight: bold;"/>
             <ListView fx:id="userListView"/>
         </VBox>

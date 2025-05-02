@@ -61,7 +61,7 @@ public class SignUpController {
                 System.out.println(response.getWritePassword());
                 System.out.println(response.getReadPassword());
                 wsController.initializeData(username,docId);
-                switchToSessionPage(username, docId, true);
+                switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
             }
@@ -122,7 +122,7 @@ public class SignUpController {
                     System.out.println(response.getReadPassword());
                     wsController.initializeData(username,docId);
                     //nodes.forEach(wsController::sendChange);
-                    switchToSessionPage(username, docId, true);
+                    switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
                 } catch (Exception e) {
                     showAlert("Error", e.getMessage());
                 }
@@ -175,13 +175,14 @@ public class SignUpController {
                 AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess" , requestData, AccessResponse.class);
 
                 String docId = response.getDocId();
-                boolean accessType = response.getAccessType();
+                boolean accessType = response.isWritePermission();
                 Node[] importedNodes = response.getDocumentNodes();
                 for (Node n : importedNodes){
+                    System.out.println(n.content);
                     wsController.getDocumentTree().insert(n);
                 }
                 wsController.initializeData(username,docId);
-                switchToSessionPage(username, docId, accessType);
+                switchToSessionPage(username, "","", accessType);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
             }
@@ -198,15 +199,15 @@ public class SignUpController {
         return true;
     }
 
-    private void switchToSessionPage(String username, String docId, boolean accessType) {
+    private void switchToSessionPage(String username, String writerCode, String readerCode, boolean accessType) {
         try {
             FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("Session.fxml"));
             Scene scene = new Scene(fxmlLoader.load(), 800, 600);
             SessionController sessionController = fxmlLoader.getController();
-            sessionController.initData(wsController, username, docId, accessType);
+            sessionController.initData(wsController, username, readerCode,writerCode, accessType);
             Stage stage = (Stage) usernameField.getScene().getWindow();
             stage.setScene(scene);
-            stage.setTitle("Text Editor - Session: " + docId);
+            stage.setTitle("Text Editor - Session");
             stage.show();
         } catch (IOException e) {
             showAlert("Error", "Failed to load session page: " + e.getMessage());

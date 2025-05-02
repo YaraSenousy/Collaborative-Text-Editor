@@ -21,6 +21,7 @@ public class WebSocketController {
     public Node handleMessage(Node change, @DestinationVariable String docId) {
         // Todo: insert in the list of nodes corresponding to the document (3ayzeen nezawd service)
         //TODO: deal with changes in cursor place
+        System.out.println("Received: "+ change);
         documentService.addChange(docId, change);
         return change;
     }

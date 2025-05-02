@@ -7,28 +7,37 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 
 import java.util.List;
+import java.util.Objects;
 
 public class SessionController {
     @FXML
     private TextArea textArea;
     @FXML
-    private Label sessionCodeLabel;
+    private Label writerCodeLabel;
+    @FXML
+    private Label readerCodeLabel;
     @FXML
     private ListView<String> userListView;
 
     private WebSocketController wsController;
     private String username;
-    private String docId;
+    private String writerCode;
+    private String readerCode;
     private long clock;
     private boolean accessPermission;
 
-    public void initData(WebSocketController wsController, String username, String docId, boolean accessPermission) {
+    public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
         this.username = username;
-        this.docId = docId;
+        this.writerCode = writerCode;
+        this.readerCode = readerCode;
         this.accessPermission = accessPermission;
         //this.clock = wsController.getClock();
-        sessionCodeLabel.setText("Session Code: " + docId);
+
+            writerCodeLabel.setText("Writer Code: " + writerCode);
+            readerCodeLabel.setText("Reader Code: " + readerCode);
+
+
         userListView.getItems().add(username + " (Line: 1)");
         // Placeholder for other users (to be updated via WebSocket)
         userListView.getItems().add("User2 (Line: 3)");
