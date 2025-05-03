@@ -10,6 +10,11 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.application.Application;
+import javafx.stage.Stage;
+import javafx.stage.Window;
+import javafx.stage.WindowEvent;
+import javafx.event.EventHandler;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
@@ -47,7 +52,7 @@ public class SessionController {
     private boolean accessPermission;
     private boolean isUpdatingTextArea = false;
     private long lastCursorUpdate = 0;
-    private static final long CURSOR_UPDATE_INTERVAL = 0;
+    private static final long CURSOR_UPDATE_INTERVAL = 100;
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -65,7 +70,7 @@ public class SessionController {
         if(accessPermission){
             textArea.setEditable(true);
         } else {textArea.setEditable(false);}
-        wsController.sendUserChange(new User(username, 1));
+        //wsController.sendUserChange(new User(username, 1));
         listConnectedUsers();
 
         updateTextArea();
@@ -73,6 +78,16 @@ public class SessionController {
         setupCursorListener();
         wsController.setOnDocumentChange(this::updateTextArea);
         wsController.setOnUsersChange(this::listConnectedUsers);
+        Platform.runLater(() -> {
+            Window window = textArea.getScene().getWindow();
+            window.setOnCloseRequest(event -> {
+                handleWindowClosing();
+            });
+        });
+    }
+
+    private void handleWindowClosing() {
+        wsController.sendDisconnected();
     }
 
     private void setupCursorListener() {
@@ -92,8 +107,8 @@ public class SessionController {
     private void sendThrottledCursorUpdate() {
         long now = System.currentTimeMillis();
         if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
-            int cursorPosition = (textArea.getCaretPosition()==0) ? 1:textArea.getCaretPosition();
-            wsController.sendUserChange(new User(username, cursorPosition));
+            int cursorPosition = textArea.getCaretPosition();
+            wsController.sendUserChange(new User(username, cursorPosition,true));
             lastCursorUpdate = now;
         }
     }

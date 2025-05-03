@@ -57,10 +57,19 @@ public class WebSocketController {
         }
     }
     private void handleReceivedChange(User newuser){
-        connectedUsers.put(newuser.getUserName(),newuser.getCursorPosition());
+        if(newuser.isConnected) {
+            connectedUsers.put(newuser.getUserName(), newuser.getCursorPosition());
+        }else{
+            connectedUsers.remove(newuser.getUserName());
+        }
         if (onUsersChange != null) {
             Platform.runLater(onUsersChange);
         }
+    }
+    public void sendDisconnected() {
+        // Send disconnection message
+        User disconnectMessage = new User(username, 0, false);
+        sendUserChange(disconnectMessage);
     }
     private void connectToWebSocket(String username, String roomId) {
         try {
@@ -122,8 +131,8 @@ public class WebSocketController {
 
                                 }
                             });
+                            sendUserChange(new User(username, 0,true));
                         }
-
                         @Override
                         public void onFailure(Throwable ex) {
                             Platform.runLater(() -> {
@@ -175,5 +184,4 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
     public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
         System.err.println("An error occurred: " + exception.getMessage());
     }
-
 }

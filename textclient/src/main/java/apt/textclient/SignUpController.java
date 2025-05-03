@@ -62,7 +62,7 @@ public class SignUpController {
                 System.out.println(response.getWritePassword());
                 System.out.println(response.getReadPassword());
                 ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
-                response.getConnectedUsers().stream().map(name -> userMap.put(name,1));
+                userMap.put(username,0);
                 wsController.initializeData(username,docId,userMap);
                 switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
             } catch (Exception e) {
@@ -124,7 +124,7 @@ public class SignUpController {
                     System.out.println(response.getWritePassword());
                     System.out.println(response.getReadPassword());
                     ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
-                    response.getConnectedUsers().stream().map(name -> userMap.put(name,1));
+                    userMap.put(username,1);
                     wsController.initializeData(username,docId,userMap);
                     //nodes.forEach(wsController::sendChange);
                     switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
@@ -178,18 +178,20 @@ public class SignUpController {
                 ObjectMapper mapper = new ObjectMapper();
 
                 AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess/"+username , requestData, AccessResponse.class);
-
-                String docId = response.getDocId();
-                boolean accessType = response.isWritePermission();
-                Node[] importedNodes = response.getDocumentNodes();
-                for (Node n : importedNodes){
-                    System.out.println(n.content);
-                    wsController.getDocumentTree().insert(n);
+                if(response.getConnectedUsers()!=null) {
+                    String docId = response.getDocId();
+                    boolean accessType = response.isWritePermission();
+                    Node[] importedNodes = response.getDocumentNodes();
+                    for (Node n : importedNodes) {
+                        System.out.println(n.content);
+                        wsController.getDocumentTree().insert(n);
+                    }
+                    wsController.initializeData(username, docId, response.getConnectedUsers());
+                    switchToSessionPage(username, "", "", accessType);
+                }else {
+                    showAlert("Error", "This username already exists, please choose another.");
+                    return;
                 }
-                ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
-                response.getConnectedUsers().stream().map(name -> userMap.put(name,1));
-                wsController.initializeData(username,docId,userMap);
-                switchToSessionPage(username, "","", accessType);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
             }

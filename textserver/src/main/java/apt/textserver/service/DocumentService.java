@@ -30,7 +30,7 @@ public class DocumentService {
     }
     public CreateResponse createDocument(ArrayList<Node> importFile,String ownerName) {
         Document doc = new Document();
-        doc.getConnectedUsers().add(ownerName);
+        doc.getConnectedUsers().put(ownerName,0);
         if (importFile != null && !importFile.isEmpty()) {
             doc.setChangesNodes(new ConcurrentLinkedQueue<Node>(importFile));
         }
@@ -47,7 +47,6 @@ public class DocumentService {
         response.setDocId(doc.getId());
         response.setReadPassword(readPassword);
         response.setWritePassword(writePassword);
-        response.setConnectedUsers(doc.getConnectedUsers());
         return response;
     }
 
@@ -59,16 +58,24 @@ public class DocumentService {
                 response.setDocId(doc.getId());
                 response.setWritePermission(false);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
-                doc.getConnectedUsers().add(user);
-                response.setConnectedUsers(doc.getConnectedUsers());
+                if(!doc.getConnectedUsers().containsKey(user)) {
+                    doc.getConnectedUsers().put(user, 0);
+                    response.setConnectedUsers(doc.getConnectedUsers());
+                } else {
+                    response.setConnectedUsers(null);
+                }
                 return response;
                 //} else if (BCrypt.checkpw(password, doc.getWritePassword())){
             }else if (Objects.equals(password, doc.getWritePassword())){
                 response.setDocId(doc.getId());
                 response.setWritePermission(true);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
-                doc.getConnectedUsers().add(user);
-                response.setConnectedUsers(doc.getConnectedUsers());
+                if(!doc.getConnectedUsers().containsKey(user)) {
+                    doc.getConnectedUsers().put(user, 0);
+                    response.setConnectedUsers(doc.getConnectedUsers());
+                } else {
+                    response.setConnectedUsers(null);
+                }
                 return response;
             }
         }
@@ -78,7 +85,11 @@ public class DocumentService {
     public void changeCursor(String docId, User change) {
         Document doc = documents.get(docId);
         if(doc!=null) {
-            doc.getConnectedUsers().add(change.getUserName());
+            if(change.isConnected()){
+            doc.getConnectedUsers().put(change.getUserName(), change.getCursorPosition());}
+            else{
+                doc.getConnectedUsers().remove(change.getUserName());
+            }
         }else {
             System.out.println("Document not found: " + docId);
         }

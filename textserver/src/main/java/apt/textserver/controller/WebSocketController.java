@@ -30,6 +30,6 @@ public class WebSocketController {
     public User handleChange(User change, @DestinationVariable String docId) {
         //TODO: deal with new connections and cursor position changes
         documentService.changeCursor(docId, change);
-        return new User(change.getUserName(),change.getCursorPosition());
+        return change;
     }
 }

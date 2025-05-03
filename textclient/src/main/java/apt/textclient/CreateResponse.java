@@ -5,16 +5,10 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 
-@Getter
-@Setter
+@Getter @Setter
 public class CreateResponse {
     String docId;
     String readPassword;
     String writePassword;
-    ArrayList<String> connectedUsers;
-//    String getDocumentId(){
-//        return this.docId;
-//    }
-
 }
 

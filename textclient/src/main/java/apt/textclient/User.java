@@ -8,9 +8,12 @@ import lombok.Setter;
 public class User {
     String userName;
     int cursorPosition;
+    boolean isConnected;
     public User(){};
-    public User(String name,int cursorPos){
+    public User(String name,int cursorPos,boolean isconnected){
         this.userName=name;
         this.cursorPosition=cursorPos;
+        this.isConnected=isconnected;
+
     }
 }

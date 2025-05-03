@@ -10,5 +10,4 @@ public class CreateResponse {
     String docId;
     String readPassword;
     String writePassword;
-    ArrayList<String> connectedUsers;
 }
