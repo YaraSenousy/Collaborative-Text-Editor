@@ -8,7 +8,7 @@ import java.util.TreeSet;
 import java.util.Comparator;
 @Getter
 @Setter
-@JsonIgnoreProperties(ignoreUnknown = true)
+
 public class Node {
     String id;
     final long clock;

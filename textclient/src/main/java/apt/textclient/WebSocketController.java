@@ -116,16 +116,17 @@ public class WebSocketController {
         }
     }
 
-    public void sendChange(Node newChange) {
+    public void sendChange(ArrayList<Node> newChange) {
         if (stompSession != null && stompSession.isConnected()) {
-            stompSession.send("/app/document/" + docId, newChange);
+            for (Node node : newChange)
+                stompSession.send("/app/document/" + docId, node);
         } else {
             System.err.println("STOMP session not connected");
         }
     }
 
     public long getClock() {
-        return System.currentTimeMillis();
+        return System.nanoTime();
     }
 }
 class MyStompSessionHandler extends StompSessionHandlerAdapter {
