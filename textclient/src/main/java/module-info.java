@@ -11,6 +11,7 @@ module apt.textclient {
     requires com.fasterxml.jackson.databind;
     requires spring.web;
     requires static lombok;
+    requires java.desktop;
     opens apt.textclient to com.fasterxml.jackson.databind, javafx.fxml;
 
 

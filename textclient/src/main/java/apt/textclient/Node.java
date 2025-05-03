@@ -46,5 +46,10 @@ public class Node {
     }
 
 
+    public String getId() { return id;
+    }
+
+    public void setId(String nodeIdToDelete) { id = nodeIdToDelete;
+    }
 }
 
