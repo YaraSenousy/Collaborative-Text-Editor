@@ -11,7 +11,7 @@ import java.util.Comparator;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Node {
     String id;
-    final long clock;
+    long clock;
     final String parentId;
     final char content;
     final String userId;

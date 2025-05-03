@@ -118,6 +118,7 @@ public class WebSocketController {
 
     public void sendChange(Node newChange) {
         if (stompSession != null && stompSession.isConnected()) {
+            System.out.println("sending..");
             stompSession.send("/app/document/" + docId, newChange);
         } else {
             System.err.println("STOMP session not connected");

@@ -47,8 +47,8 @@ public class SessionController {
     private String readerCode;
     private boolean accessPermission;
     private boolean isUpdatingTextArea = false;
-    private Stack<String> undoStack = new Stack<>();
-    private Stack<String> redoStack = new Stack<>();
+    private Stack<Node> undoStack = new Stack<>();
+    private Stack<Node> redoStack = new Stack<>();
     private boolean isProcessingChanges = false;
     private int expectedCaretPosition = 0;
 
@@ -80,10 +80,9 @@ public class SessionController {
         textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
             if (event.isControlDown() && event.getCode() == KeyCode.Z) {
                 if (event.isShiftDown()) {
-                    // lw shift is pressed yeb2a redo
                     redo();
                 } else {
-                    undo(); //lw la yeb2a undo
+                    undo();
                 }
                 event.consume();
             }
@@ -96,53 +95,52 @@ public class SessionController {
                 return;
             }
             isProcessingChanges = true;
-            try{
+            try {
                 String username = wsController.getUsername();
                 CRDTTree tree = wsController.getDocumentTree();
                 int changeIndex = findFirstChangeIndex(oldValue, newValue);
 
                 if (changeIndex >= 0) {
-                    long clock = wsController.getClock();
-
+                    long baseClock = wsController.getClock();
 
                     if (newValue.length() > oldValue.length()) {
                         String parentId;
 
-                        // Determine the parentId based on the change position
                         if (changeIndex == 0) {
-                            parentId = tree.getRoot().getId(); // Insert at beginning
+                            parentId = tree.getRoot().getId();
                         } else {
                             parentId = findNodeIdAtPosition(tree, changeIndex - 1);
 
                         }
-                        // Insertion
+
                         int insertCount = newValue.length() - oldValue.length();
                         for (int i = 0; i < insertCount; i++) {
                             int newIndex = changeIndex + i;
                             char newChar = newValue.charAt(newIndex);
-                            clock = wsController.getClock();
+                            long clock = baseClock + i + 1;
                             Node newNode = new Node(username, clock, parentId, newChar, 0);
                             wsController.sendChange(newNode);
+                            undoStack.push(newNode);
                             parentId = newNode.getId();
                         }
                         expectedCaretPosition = changeIndex + insertCount;
                     } else if (newValue.length() < oldValue.length()) {
-                        // Deletion
                         String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex);
-                        ;
-                        Node deleteNode = new Node(username, clock, tree.getRoot().getId(), ' ', 1);
-                        deleteNode.setId(nodeIdToDelete);
-                        wsController.sendChange(deleteNode);
+                        if (nodeIdToDelete != null) {
+                            Node deleteNode = new Node(username, baseClock, tree.getRoot().getId(), ' ', 1);
+                            deleteNode.setId(nodeIdToDelete);
+                            wsController.sendChange(deleteNode);
+                            undoStack.push(deleteNode);
+                        }
                         expectedCaretPosition = changeIndex;
                     }
                 }
-            }finally{
-                    isProcessingChanges = false;
-                    saveState();
+            } finally {
+                isProcessingChanges = false;
             }
-
         });
     }
+
 
     private int findFirstChangeIndex(String oldValue, String newValue) {
         int minLength = Math.min(oldValue.length(), newValue.length());
@@ -152,9 +150,9 @@ public class SessionController {
             }
         }
         if (newValue.length() != oldValue.length()) {
-            return minLength; // Return the position where length differs
+            return minLength;
         }
-        return -1; // No change
+        return -1;
     }
 
     private String findNodeIdAtPosition(CRDTTree tree, int position) {
@@ -169,7 +167,6 @@ public class SessionController {
 
     private void traverseForNodes(Node node, List<Node> nodesInOrder) {
         if (node == null) return;
-        // Use the TreeSet's natural order (reversed clock)
         for (Node child : node.children) {
             if (!child.isDeleted) {
                 nodesInOrder.add(child);
@@ -180,75 +177,107 @@ public class SessionController {
 
     private void updateTextArea() {
         Platform.runLater(() -> {
-            if (isUpdatingTextArea){
+            if (isUpdatingTextArea) {
                 return;
             }
             isUpdatingTextArea = true;
             try {
-                int currentCaretPosition = textArea.getCaretPosition();
-                List<Character> chars = wsController.getDocumentTree().traverse();
+                System.out.println("Updating screen");
+                CRDTTree tree = wsController.getDocumentTree(); // Ensure we get the latest tree
+                List<Character> chars = tree.traverse();
                 StringBuilder content = new StringBuilder();
                 chars.forEach(content::append);
                 textArea.setText(content.toString());
                 textArea.positionCaret(Math.min(expectedCaretPosition, content.length()));
-            }finally {
+            } finally {
                 isUpdatingTextArea = false;
-                saveState();
             }
-
         });
     }
     @FXML
-    private void exportDoc(){
+    private void exportDoc() {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export document");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
 
         File file = fileChooser.showSaveDialog(exportButton.getScene().getWindow());
-        if(file!=null){
+        if (file != null) {
             wsController.getDocumentTree().export(file.getAbsolutePath());
         }
     }
     @FXML
-    private void copyWriterCode(){
+    private void copyWriterCode() {
         Clipboard clipboard = Clipboard.getSystemClipboard();
         ClipboardContent content = new ClipboardContent();
-
         content.putString(writerCode);
         clipboard.setContent(content);
     }
     @FXML
-    private void copyReaderCode(){
+    private void copyReaderCode() {
         Clipboard clipboard = Clipboard.getSystemClipboard();
         ClipboardContent content = new ClipboardContent();
-
         content.putString(readerCode);
         clipboard.setContent(content);
     }
-    private void saveState() {
-        String currentContent = textArea.getText();
-        if (undoStack.isEmpty() || !undoStack.peek().equals(currentContent)) {
-            undoStack.push(currentContent);
-            redoStack.clear(); // bnclear el redo stack on changes
-        }
-    }
+
     @FXML
     private void redo() {
-        if (!redoStack.isEmpty() && accessPermission) {
-            String redoContent = redoStack.pop();
-            undoStack.push(redoContent);
-            applyContent(redoContent);
+        if (!redoStack.isEmpty()) {
+            System.out.println("Redo");
+            Node redoNode = redoStack.pop();
+            redoNode.setClock(wsController.getClock()); // Assign new clock to avoid duplicate IDs
+            redoNode.setOperation(redoNode.getOperation() ^ 1); // Toggle operation to match undo behavior
+            undoStack.push(redoNode);
+            System.out.println("Redo node: " + redoNode.getContent() + ", operation: " + redoNode.getOperation() + ", clock: " + redoNode.getClock());
+
+            // Update caret position based on operation
+            CRDTTree tree = wsController.getDocumentTree();
+            int nodePosition = findNodePosition(tree, redoNode.getId());
+            if (redoNode.getOperation() == 0) { // Insert
+                expectedCaretPosition = nodePosition + 1;
+            } else { // Delete
+                expectedCaretPosition = nodePosition;
+            }
+
+            wsController.sendChange(redoNode);
+            updateTextArea();
         }
     }
+
     @FXML
     private void undo() {
-        if (undoStack.size() > 1 && accessPermission) {
-            String currentContent = undoStack.pop();
-            redoStack.push(currentContent);
-            String previousContent = undoStack.peek();
-            applyContent(previousContent);
+        if (!undoStack.isEmpty()) {
+            System.out.println("Undo");
+            Node undoNode = undoStack.pop();
+            undoNode.setOperation(undoNode.getOperation() ^ 1); // Toggle operation
+            undoNode.setClock(wsController.getClock()); // Assign new clock to avoid duplicate IDs
+            redoStack.push(undoNode);
+            System.out.println("Undo node: " + undoNode.getContent() + ", operation: " + undoNode.getOperation() + ", clock: " + undoNode.getClock());
+
+            // Update caret position based on operation
+            CRDTTree tree = wsController.getDocumentTree();
+            int nodePosition = findNodePosition(tree, undoNode.getId());
+            if (undoNode.getOperation() == 0) { // Insert
+                expectedCaretPosition = nodePosition + 1;
+            } else { // Delete
+                expectedCaretPosition = nodePosition;
+            }
+
+            wsController.sendChange(undoNode);
+            updateTextArea();
         }
     }
+    private int findNodePosition(CRDTTree tree, String nodeId) {
+        List<Node> nodesInOrder = new ArrayList<>();
+        traverseForNodes(tree.getRoot(), nodesInOrder);
+        for (int i = 0; i < nodesInOrder.size(); i++) {
+            if (nodesInOrder.get(i).getId().equals(nodeId)) {
+                return i;
+            }
+        }
+        return 0; // Default to start if not found
+    }
+
     private void applyContent(String content) {
         if (!accessPermission) return;
 
@@ -258,7 +287,6 @@ public class SessionController {
         long clock = wsController.getClock();
 
         isUpdatingTextArea = true;
-        // Handle deletions
         if (content.length() < currentContent.length()) {
             int deleteCount = currentContent.length() - content.length();
             for (int i = 0; i < deleteCount; i++) {
@@ -270,9 +298,7 @@ public class SessionController {
                     clock = wsController.getClock();
                 }
             }
-        }
-        // Handle insertions
-        else if (content.length() > currentContent.length()) {
+        } else if (content.length() > currentContent.length()) {
             String parentId = changeIndex == 0 ? tree.getRoot().getId() : findNodeIdAtPosition(tree, changeIndex - 1);
             int insertCount = content.length() - currentContent.length();
             for (int i = 0; i < insertCount; i++) {
@@ -287,6 +313,4 @@ public class SessionController {
         textArea.setText(content);
         isUpdatingTextArea = false;
     }
-
-
 }
