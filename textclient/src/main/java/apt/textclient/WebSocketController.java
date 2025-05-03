@@ -125,7 +125,7 @@ public class WebSocketController {
     }
 
     public long getClock() {
-        return System.currentTimeMillis();
+        return System.nanoTime();
     }
 }
 class MyStompSessionHandler extends StompSessionHandlerAdapter {
