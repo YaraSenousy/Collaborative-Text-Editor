@@ -150,7 +150,6 @@ public class WebSocketController {
         if (stompSession != null && stompSession.isConnected()) {
             stompSession.send("/app/document/" + docId, newChange);
         } else {
-            System.out.println("failed because of sendchange");
             System.err.println("STOMP session not connected");
         }
     }
@@ -158,7 +157,6 @@ public class WebSocketController {
         if (stompSession != null && stompSession.isConnected()) {
             stompSession.send("/app/change/" + docId, newChange);
         } else {
-            System.out.println("failed because of sendUserchange");
             System.err.println("STOMP session not connected");
         }
     }
