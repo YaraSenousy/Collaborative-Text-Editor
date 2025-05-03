@@ -58,6 +58,7 @@ public class SessionController {
         this.writerCode = writerCode;
         this.readerCode = readerCode;
         this.accessPermission = accessPermission;
+        System.out.println("access: "+accessPermission);
         if (!Objects.equals(writerCode, "")) {
             writerCodeBox.setVisible(true);
             readerCodeBox.setVisible(true);
@@ -72,6 +73,11 @@ public class SessionController {
         userListView.getItems().add(username + " (Line: 1)");
         userListView.getItems().add("User2 (Line: 3)");
         userListView.getItems().add("User3 (Line: 5)");
+
+        textArea.setEditable(accessPermission);
+        undoButton.setDisable(!accessPermission);
+        redoButton.setDisable(!accessPermission);
+        exportButton.setDisable(!accessPermission);
 
         updateTextArea();
         setupTextAreaListener();
@@ -194,6 +200,7 @@ public class SessionController {
             }
         });
     }
+
     @FXML
     private void exportDoc() {
         FileChooser fileChooser = new FileChooser();
@@ -205,6 +212,7 @@ public class SessionController {
             wsController.getDocumentTree().export(file.getAbsolutePath());
         }
     }
+
     @FXML
     private void copyWriterCode() {
         Clipboard clipboard = Clipboard.getSystemClipboard();
@@ -212,6 +220,7 @@ public class SessionController {
         content.putString(writerCode);
         clipboard.setContent(content);
     }
+
     @FXML
     private void copyReaderCode() {
         Clipboard clipboard = Clipboard.getSystemClipboard();

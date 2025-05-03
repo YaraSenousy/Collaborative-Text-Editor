@@ -176,6 +176,7 @@ public class SignUpController {
 
                 String docId = response.getDocId();
                 boolean accessType = response.isWritePermission();
+                System.out.println("isWritePermission: "+accessType);
                 Node[] importedNodes = response.getDocumentNodes();
                 for (Node n : importedNodes){
                     System.out.println(n.content);
@@ -209,7 +210,7 @@ public class SignUpController {
             FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("Session.fxml"));
             Scene scene = new Scene(fxmlLoader.load(), 800, 600);
             SessionController sessionController = fxmlLoader.getController();
-            sessionController.initData(wsController, username, readerCode,writerCode, accessType);
+            sessionController.initData(wsController, username, writerCode,readerCode, accessType);
             Stage stage = (Stage) usernameField.getScene().getWindow();
             stage.setScene(scene);
             stage.setTitle("Text Editor - Session");
