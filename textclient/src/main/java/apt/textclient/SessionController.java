@@ -1,28 +1,29 @@
 package apt.textclient;
 
+import javafx.animation.Animation;
+import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.application.Application;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 import javafx.event.EventHandler;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
+import javafx.util.Duration;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionController {
@@ -53,6 +54,9 @@ public class SessionController {
     private boolean isUpdatingTextArea = false;
     private long lastCursorUpdate = 0;
     private static final long CURSOR_UPDATE_INTERVAL = 100;
+    private Pane cursorLayer;
+    private Map<String, Rectangle> userCursors = new ConcurrentHashMap<>();
+    private static final Map<String, Color> userColors = new ConcurrentHashMap<>();
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -73,6 +77,8 @@ public class SessionController {
         //wsController.sendUserChange(new User(username, 1));
         listConnectedUsers();
 
+        cursorLayer = (Pane) textArea.getScene().lookup("#cursorLayer");
+
         updateTextArea();
         setupTextAreaListener();
         setupCursorListener();
@@ -84,6 +90,14 @@ public class SessionController {
                 handleWindowClosing();
             });
         });
+
+        if (userColors.isEmpty()) {  // Only generate colors once
+            wsController.getConnectedUsers().keySet()
+                    .forEach(user -> userColors.putIfAbsent(user, generateColorForUsername(user)));
+        }
+        generateColorForUsername(username);
+
+        //userColors.clear();
     }
 
     private void handleWindowClosing() {
@@ -95,9 +109,11 @@ public class SessionController {
             // Update cursor position on key press or mouse click
             textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
                 sendThrottledCursorUpdate();
+                updateAllCursors();
             });
             textArea.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
                 sendThrottledCursorUpdate();
+                updateAllCursors();
             });
         } else {
             System.err.println("Error: textArea or wsController is null, cannot set up cursor listener.");
@@ -204,6 +220,106 @@ public class SessionController {
             isUpdatingTextArea = false;
         });
     }
+
+    private void updateUserCursor(String username, int position) {
+        Platform.runLater(() -> {
+            try {
+                // Remove old cursor if exists
+                Rectangle oldCursor = userCursors.get(username);
+                if (oldCursor != null) {
+                    cursorLayer.getChildren().remove(oldCursor);
+                }
+
+                // Validate position
+                if (position < 0 || position > textArea.getText().length()) {
+                    return;
+                }
+
+                // Get or create user color
+                Color userColor = userColors.computeIfAbsent(username, this::generateColorForUsername);
+
+                // Create new cursor
+                Rectangle cursor = new Rectangle(2, textArea.getFont().getSize() + 4, userColor);
+                cursor.setOpacity(0.7);
+
+                // Position cursor
+                String textUpToCursor = textArea.getText(0, position);
+                String[] lines = textUpToCursor.split("\n", -1);
+                int lineNumber = lines.length - 1;
+                String currentLine = lines[lineNumber];
+
+                // Calculate X position (approximate)
+                double charWidth = textArea.getFont().getSize() * 0.6;
+                double xPos = currentLine.length() * charWidth + textArea.getPadding().getLeft();
+
+                // Calculate Y position
+                double lineHeight = textArea.getFont().getSize() * 1.2;
+                double yPos = lineNumber * lineHeight + textArea.getPadding().getTop();
+
+                cursor.setLayoutX(xPos);
+                cursor.setLayoutY(yPos);
+
+                // Add blinking animation
+                FadeTransition blink = new FadeTransition(Duration.millis(1000), cursor);
+                blink.setFromValue(0.7);
+                blink.setToValue(0.2);
+                blink.setCycleCount(Animation.INDEFINITE);
+                blink.setAutoReverse(true);
+                blink.play();
+
+                // Store cursor reference
+                cursorLayer.getChildren().add(cursor);
+                userCursors.put(username, cursor);
+
+            } catch (Exception e) {
+                System.err.println("Error updating cursor: " + e.getMessage());
+            }
+        });
+    }
+
+    private void updateAllCursors() {
+        if (wsController != null && wsController.getConnectedUsers() != null) {
+            wsController.getConnectedUsers().forEach((user, pos) -> {
+                // Get existing cursor (if any)
+                Rectangle existingCursor = userCursors.get(user);
+
+                // Calculate expected position
+                double expectedX = calculateCursorX(pos);
+
+                // Update if:
+                // 1. No cursor exists for this user, OR
+                // 2. Cursor position changed significantly (>1px tolerance)
+                if (existingCursor == null ||
+                        Math.abs(existingCursor.getLayoutX() - expectedX) > 1.0) {
+                    updateUserCursor(user, pos);
+                }
+            });
+        }
+    }
+
+    private double calculateCursorX(int position) {
+        if (textArea == null || position < 0) return 0;
+
+        try {
+            String text = textArea.getText();
+            int adjustedPos = Math.min(position, text.length());
+            String textToCursor = text.substring(0, adjustedPos);
+
+            // Get the line and column
+            int lastNewLine = textToCursor.lastIndexOf('\n');
+            int column = (lastNewLine == -1)
+                    ? adjustedPos
+                    : adjustedPos - lastNewLine - 1;
+
+            // Approximate character width (monospace assumption)
+            double charWidth = textArea.getFont().getSize() * 0.6;
+            return column * charWidth + textArea.getPadding().getLeft();
+        } catch (Exception e) {
+            System.err.println("Cursor position calculation error: " + e.getMessage());
+            return 0;
+        }
+    }
+
     @FXML
     private void exportDoc(){
         FileChooser fileChooser = new FileChooser();
@@ -237,6 +353,24 @@ public class SessionController {
             return;
         }
 
+        userListView.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String username, boolean empty) {
+                super.updateItem(username, empty);
+
+                if (empty || username == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    //String username = item.split(" ")[0]; // Extract just the name
+                    //Color userColor = userColors.computeIfAbsent(username, SessionController.this::generateColorForUsername);
+                    Text coloredText = new Text(username);
+                    coloredText.setFill(userColors.get(username));
+                    setGraphic(coloredText);
+                }
+            }
+        });
+
         userListView.getItems().clear();
         ConcurrentHashMap<String,Integer> connectedUsers=wsController.getConnectedUsers();
         // Get connected users from document
@@ -255,4 +389,12 @@ public class SessionController {
             }
         }
     }
+
+    private Color generateColorForUsername(String username) {
+        // This will now return the same color for same username across sessions
+        return userColors.computeIfAbsent(username,
+                un -> Color.hsb(Math.abs(un.hashCode() % 360), 0.7, 0.9));
+    }
+
 }
+
