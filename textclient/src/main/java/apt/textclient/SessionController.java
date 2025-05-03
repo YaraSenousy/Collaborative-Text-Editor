@@ -43,6 +43,8 @@ public class SessionController {
     private String readerCode;
     private boolean accessPermission;
     private boolean isUpdatingTextArea = false;
+    private boolean isProcessingChanges = false;
+    private int expectedCaretPosition = 0;
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -72,45 +74,66 @@ public class SessionController {
 
     private void setupTextAreaListener() {
         textArea.textProperty().addListener((obs, oldValue, newValue) -> {
-            if (isUpdatingTextArea) {
+            if (isUpdatingTextArea || isProcessingChanges) {
+                System.out.println("Listener skipped: Updating=" + isUpdatingTextArea + ", Processing=" + isProcessingChanges);
                 return;
             }
 
-            String username = wsController.getUsername();
-            CRDTTree tree = wsController.getDocumentTree();
-            int changeIndex = findFirstChangeIndex(oldValue, newValue);
+            System.out.println("Entering listener");
+            isProcessingChanges = true;
+            try {
+                String username = wsController.getUsername();
+                CRDTTree tree = wsController.getDocumentTree();
+                int changeIndex = findFirstChangeIndex(oldValue, newValue);
+                ArrayList<Node> nodesToSend = new ArrayList<>();
+                if (changeIndex >= 0) {
+                    long clock = wsController.getClock();
 
-            if (changeIndex >= 0) {
-                long clock = wsController.getClock();
+                    if (newValue.length() > oldValue.length()) {
+                        String parentId;
 
+                        if (changeIndex == 0) {
+                            parentId = tree.getRoot().getId();
+                        } else {
+                            parentId = findNodeIdAtPosition(tree, changeIndex - 1);
+                            if (parentId == null) {
+                                parentId = tree.getRoot().getId();
+                            }
+                        }
 
-                if (newValue.length() > oldValue.length()) {
-                    String parentId;
+                        int insertCount = newValue.length() - oldValue.length();
 
-                    // Determine the parentId based on the change position
-                    if (changeIndex == 0) {
-                        parentId = tree.getRoot().getId(); // Insert at beginning
-                    } else {
-                        parentId = findNodeIdAtPosition(tree, changeIndex - 1);
+                        System.out.println("Inserting " + insertCount + " characters at index " + changeIndex);
+                        for (int i = 0; i < insertCount; i++) {
+                            int newIndex = changeIndex + i;
+                            if (newIndex < newValue.length()) {
+                                char newChar = newValue.charAt(newIndex);
+                                clock = wsController.getClock() ;
+                                Node newNode = new Node(username, clock, parentId, newChar, 0);
+                                System.out.println("Created node: id=" + newNode.getId() + ", char='" + newChar + "', parentId=" + parentId);
+                                nodesToSend.add(newNode);
+                                parentId = newNode.getId();
+                            }
+                        }
+                        System.out.println("Sending " + nodesToSend.size() + " nodes to server");
+                        expectedCaretPosition = changeIndex + insertCount;
 
+                    } else if (newValue.length() < oldValue.length()) {
+                        String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex);
+                        if (nodeIdToDelete != null) {
+                            Node deleteNode = new Node(username, clock, tree.getRoot().getId(), ' ', 1);
+                            deleteNode.setId(nodeIdToDelete);
+                            System.out.println("Sending delete node for id=" + nodeIdToDelete);
+                            nodesToSend.add(deleteNode);
+                        }
+                        expectedCaretPosition = changeIndex;
                     }
-                    // Insertion
-                    int insertCount = newValue.length() - oldValue.length();
-                    for (int i = 0; i < insertCount; i++) {
-                        int newIndex = changeIndex + i;
-                        char newChar = newValue.charAt(newIndex);
-                        clock = wsController.getClock();
-                        Node newNode = new Node(username, clock, parentId, newChar, 0);
-                        wsController.sendChange(newNode);
-                        parentId = newNode.getId();
-                    }
-                } else if (newValue.length() < oldValue.length()) {
-                    // Deletion
-                    String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex );;
-                    Node deleteNode = new Node(username, clock, tree.getRoot().getId(), ' ', 1);
-                    deleteNode.setId(nodeIdToDelete);
-                    wsController.sendChange(deleteNode);
+                    wsController.sendChange(nodesToSend);
+
                 }
+            } finally {
+                isProcessingChanges = false;
+                System.out.println("Exiting listener");
             }
         });
     }
@@ -151,14 +174,21 @@ public class SessionController {
 
     private void updateTextArea() {
         Platform.runLater(() -> {
+            if (isUpdatingTextArea) {
+                System.out.println("Update text area skipped: Already updating");
+                return;
+            }
             isUpdatingTextArea = true;
-            int currentCaretPosition = textArea.getCaretPosition();
-            List<Character> chars = wsController.getDocumentTree().traverse();
-            StringBuilder content = new StringBuilder();
-            chars.forEach(content::append);
-            textArea.setText(content.toString());
-            textArea.positionCaret(Math.min(currentCaretPosition, textArea.getText().length()));
-            isUpdatingTextArea = false;
+            try {
+                int currentCaretPosition = textArea.getCaretPosition();
+                List<Character> chars = wsController.getDocumentTree().traverse();
+                StringBuilder content = new StringBuilder();
+                chars.forEach(content::append);
+                textArea.setText(content.toString());
+                textArea.positionCaret(Math.min(expectedCaretPosition, content.length()));
+            } finally {
+                isUpdatingTextArea = false;
+            }
         });
     }
     @FXML
