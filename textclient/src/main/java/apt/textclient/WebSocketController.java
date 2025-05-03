@@ -1,5 +1,6 @@
 package apt.textclient;
 
+import apt.textclient.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -8,6 +9,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -32,11 +34,14 @@ public class WebSocketController {
     private CRDTTree documentTree = new CRDTTree();
     private ObjectMapper objectMapper = new ObjectMapper();
     private Runnable onDocumentChange;
+    private Runnable onUsersChange;
+    private ConcurrentHashMap<String,Integer> connectedUsers;
 
 
-    public void initializeData( String username,String docId) {
+    public void initializeData( String username,String docId,ConcurrentHashMap<String,Integer> connectedUsers) {
         this.username = username;
         this.docId = docId;
+        this.connectedUsers=connectedUsers;
         connectToWebSocket(username, docId);
         System.out.println("docId after connecttowebsock "+docId+" username: "+username);
     }
@@ -49,6 +54,12 @@ public class WebSocketController {
         }
         if (onDocumentChange != null) {
             Platform.runLater(onDocumentChange);
+        }
+    }
+    private void handleReceivedChange(User newuser){
+        connectedUsers.put(newuser.getUserName(),newuser.getCursorPosition());
+        if (onUsersChange != null) {
+            Platform.runLater(onUsersChange);
         }
     }
     private void connectToWebSocket(String username, String roomId) {
@@ -92,6 +103,25 @@ public class WebSocketController {
 
                                 }
                             });
+                            // Subscribe to the changes
+                            topic = "/topic/change/" + docId;
+                            stompSession.subscribe(topic, new StompFrameHandler() {
+
+                                @Override
+                                public Type getPayloadType(StompHeaders headers) {
+                                    return User.class; // Expected payload type
+                                }
+                                @Override
+                                public void handleFrame(StompHeaders headers, Object payload) {
+                                    try{
+                                        User change = (User) payload;
+                                        handleReceivedChange(change);}
+                                    catch(Exception e){
+                                        System.err.println(e.getMessage());
+                                    }
+
+                                }
+                            });
                         }
 
                         @Override
@@ -120,6 +150,15 @@ public class WebSocketController {
         if (stompSession != null && stompSession.isConnected()) {
             stompSession.send("/app/document/" + docId, newChange);
         } else {
+            System.out.println("failed because of sendchange");
+            System.err.println("STOMP session not connected");
+        }
+    }
+    public void sendUserChange(User newChange){
+        if (stompSession != null && stompSession.isConnected()) {
+            stompSession.send("/app/change/" + docId, newChange);
+        } else {
+            System.out.println("failed because of sendUserchange");
             System.err.println("STOMP session not connected");
         }
     }

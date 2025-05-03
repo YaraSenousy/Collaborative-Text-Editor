@@ -8,6 +8,8 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionController {
     @FXML
@@ -43,6 +46,8 @@ public class SessionController {
     private String readerCode;
     private boolean accessPermission;
     private boolean isUpdatingTextArea = false;
+    private long lastCursorUpdate = 0;
+    private static final long CURSOR_UPDATE_INTERVAL = 0;
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -60,13 +65,37 @@ public class SessionController {
         if(accessPermission){
             textArea.setEditable(true);
         } else {textArea.setEditable(false);}
-        userListView.getItems().add(username + " (Line: 1)");
-        userListView.getItems().add("User2 (Line: 3)");
-        userListView.getItems().add("User3 (Line: 5)");
+        wsController.sendUserChange(new User(username, 1));
+        listConnectedUsers();
 
         updateTextArea();
         setupTextAreaListener();
+        setupCursorListener();
         wsController.setOnDocumentChange(this::updateTextArea);
+        wsController.setOnUsersChange(this::listConnectedUsers);
+    }
+
+    private void setupCursorListener() {
+        if (textArea != null && wsController != null) {
+            // Update cursor position on key press or mouse click
+            textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+                sendThrottledCursorUpdate();
+            });
+            textArea.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+                sendThrottledCursorUpdate();
+            });
+        } else {
+            System.err.println("Error: textArea or wsController is null, cannot set up cursor listener.");
+        }
+    }
+
+    private void sendThrottledCursorUpdate() {
+        long now = System.currentTimeMillis();
+        if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
+            int cursorPosition = (textArea.getCaretPosition()==0) ? 1:textArea.getCaretPosition();
+            wsController.sendUserChange(new User(username, cursorPosition));
+            lastCursorUpdate = now;
+        }
     }
 
     private void setupTextAreaListener() {
@@ -186,5 +215,29 @@ public class SessionController {
 
         content.putString(readerCode);
         clipboard.setContent(content);
+    }
+    private void listConnectedUsers(){
+        if (userListView == null || wsController == null) {
+            System.err.println("Error: userListView or wsController is null, cannot update user list.");
+            return;
+        }
+
+        userListView.getItems().clear();
+        ConcurrentHashMap<String,Integer> connectedUsers=wsController.getConnectedUsers();
+        // Get connected users from document
+        if (connectedUsers == null) {
+            System.err.println("Warning: getConnectedUsers returned null.");
+            return;
+        }
+        ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
+        ArrayList<Integer> cursorpos=new ArrayList<>(connectedUsers.values());
+        // Add users to ListView with line number placeholder
+        for (int i = 0; i < connectedUsers.size(); i++) {
+            String user=names.get(i);
+            int pos=cursorpos.get(i);
+            if (user != null && !user.trim().isEmpty()) {
+                userListView.getItems().add(user + " (Line: " + pos + ")");
+            }
+        }
     }
 }

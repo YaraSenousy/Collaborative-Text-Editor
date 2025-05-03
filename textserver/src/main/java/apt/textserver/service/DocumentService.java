@@ -1,20 +1,13 @@
 package apt.textserver.service;
 
-import apt.textserver.model.AccessResponse;
-import apt.textserver.model.CreateResponse;
-import apt.textserver.model.Document;
-import apt.textserver.model.Node;
+import apt.textserver.model.*;
 //import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Base64;
-
 
 
 @Service
@@ -35,8 +28,9 @@ public class DocumentService {
         random.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
-    public CreateResponse createDocument(ArrayList<Node> importFile) {
+    public CreateResponse createDocument(ArrayList<Node> importFile,String ownerName) {
         Document doc = new Document();
+        doc.getConnectedUsers().add(ownerName);
         if (importFile != null && !importFile.isEmpty()) {
             doc.setChangesNodes(new ConcurrentLinkedQueue<Node>(importFile));
         }
@@ -53,10 +47,11 @@ public class DocumentService {
         response.setDocId(doc.getId());
         response.setReadPassword(readPassword);
         response.setWritePassword(writePassword);
+        response.setConnectedUsers(doc.getConnectedUsers());
         return response;
     }
 
-    public AccessResponse grantAccess(String password){
+    public AccessResponse grantAccess(String password,String user){
         AccessResponse response = new AccessResponse();
         for (Document doc : documents.values()){
             //if (BCrypt.checkpw(password, doc.getReadPassword())){
@@ -64,15 +59,28 @@ public class DocumentService {
                 response.setDocId(doc.getId());
                 response.setWritePermission(false);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
+                doc.getConnectedUsers().add(user);
+                response.setConnectedUsers(doc.getConnectedUsers());
                 return response;
                 //} else if (BCrypt.checkpw(password, doc.getWritePassword())){
             }else if (Objects.equals(password, doc.getWritePassword())){
                 response.setDocId(doc.getId());
                 response.setWritePermission(true);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
+                doc.getConnectedUsers().add(user);
+                response.setConnectedUsers(doc.getConnectedUsers());
                 return response;
             }
         }
         return null;
+    }
+
+    public void changeCursor(String docId, User change) {
+        Document doc = documents.get(docId);
+        if(doc!=null) {
+            doc.getConnectedUsers().add(change.getUserName());
+        }else {
+            System.out.println("Document not found: " + docId);
+        }
     }
 }

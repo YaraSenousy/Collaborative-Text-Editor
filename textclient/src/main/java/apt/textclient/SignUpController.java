@@ -16,6 +16,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -53,14 +54,16 @@ public class SignUpController {
                 restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
                 CreateResponse response = restTemplate.postForObject(
-                        SERVER_URL + "/createDocument",
+                        SERVER_URL + "/createDocument/"+username,
                         request,
                         CreateResponse.class
                 );
                 String docId = response.getDocId();
                 System.out.println(response.getWritePassword());
                 System.out.println(response.getReadPassword());
-                wsController.initializeData(username,docId);
+                ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
+                response.getConnectedUsers().stream().map(name -> userMap.put(name,1));
+                wsController.initializeData(username,docId,userMap);
                 switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
@@ -68,13 +71,13 @@ public class SignUpController {
             //try {
             // Send HTTP request to create a new document
 //                HttpRequest request = HttpRequest.newBuilder()
-//                        .uri(URI.create(SERVER_URL + "/createDocument"))
+//                        .uri(URI.create(SERVER_URL + "/createDocument/"+username))
 //                        .header("Content-Type", "application/json")
 //                        .POST(HttpRequest.BodyPublishers.ofString("[]")) // Empty node list for new document
 //                        .build();
 //                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 //                CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-            //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", null, CreateResponse.class);
+            //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument/"+username, null, CreateResponse.class);
             //String docId = createResponse.getDocumentId();
             //wsController.initializeData(username,docId);
             //switchToSessionPage(username, docId, true);
@@ -109,18 +112,20 @@ public class SignUpController {
                     requestData.addAll(nodes);
                     ObjectMapper mapper = new ObjectMapper();
                     System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(nodes));
-                    CreateResponse response=restTemplate.postForObject(SERVER_URL + "/createDocument" , requestData, CreateResponse.class);
+                    CreateResponse response=restTemplate.postForObject(SERVER_URL + "/createDocument/"+username , requestData, CreateResponse.class);
 
 //
 //                    CreateResponse response = restTemplate.postForObject(
-//                            SERVER_URL + "/createDocument",
+//                            SERVER_URL + "/createDocument/"+username,
 //                            request,
 //                            CreateResponse.class
 //                    );
                     String docId = response.getDocId();
                     System.out.println(response.getWritePassword());
                     System.out.println(response.getReadPassword());
-                    wsController.initializeData(username,docId);
+                    ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
+                    response.getConnectedUsers().stream().map(name -> userMap.put(name,1));
+                    wsController.initializeData(username,docId,userMap);
                     //nodes.forEach(wsController::sendChange);
                     switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
                 } catch (Exception e) {
@@ -129,13 +134,13 @@ public class SignUpController {
 //                    // Send HTTP request to create document with nodes
 //                    String nodesJson = objectMapper.writeValueAsString(nodes);
 //                    HttpRequest request = HttpRequest.newBuilder()
-//                            .uri(URI.create(SERVER_URL + "/createDocument"))
+//                            .uri(URI.create(SERVER_URL + "/createDocument/"+username))
 //                            .header("Content-Type", "application/json")
 //                            .POST(HttpRequest.BodyPublishers.ofString(nodesJson))
 //                            .build();
 //                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 //                    CreateResponse createResponse = objectMapper.readValue(response.body(), CreateResponse.class);
-                //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument", nodes, CreateResponse.class);
+                //CreateResponse createResponse = restTemplate.postForObject(SERVER_URL + "/createDocument/"+username, nodes, CreateResponse.class);
 //                    String docId = response.getDocId();
 //                    wsController.initializeData(username,docId);
 //                    nodes.forEach(wsController::sendChange); // Send nodes to WebSocket for synchronization
@@ -172,7 +177,7 @@ public class SignUpController {
                 requestData.add(code);
                 ObjectMapper mapper = new ObjectMapper();
 
-                AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess" , requestData, AccessResponse.class);
+                AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess/"+username , requestData, AccessResponse.class);
 
                 String docId = response.getDocId();
                 boolean accessType = response.isWritePermission();
@@ -181,7 +186,9 @@ public class SignUpController {
                     System.out.println(n.content);
                     wsController.getDocumentTree().insert(n);
                 }
-                wsController.initializeData(username,docId);
+                ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
+                response.getConnectedUsers().stream().map(name -> userMap.put(name,1));
+                wsController.initializeData(username,docId,userMap);
                 switchToSessionPage(username, "","", accessType);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
