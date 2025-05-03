@@ -179,7 +179,12 @@ public class SignUpController {
                 Node[] importedNodes = response.getDocumentNodes();
                 for (Node n : importedNodes){
                     System.out.println(n.content);
-                    wsController.getDocumentTree().insert(n);
+                    if (n.getOperation() == 0) {
+                        wsController.getDocumentTree().insert(n);
+                    }
+                    else{
+                        wsController.getDocumentTree().delete(n.getId());
+                    }
                 }
                 wsController.initializeData(username,docId);
                 switchToSessionPage(username, "","", accessType);
