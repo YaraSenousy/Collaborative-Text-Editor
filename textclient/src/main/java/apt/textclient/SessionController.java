@@ -1,12 +1,13 @@
 package apt.textclient;
 
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
@@ -79,6 +80,7 @@ public class SessionController {
         redoButton.setDisable(!accessPermission);
         exportButton.setDisable(!accessPermission);
 
+        setButtonIcons();
         updateTextArea();
         setupTextAreaListener();
         wsController.setOnDocumentChange(this::updateTextArea);
@@ -94,7 +96,39 @@ public class SessionController {
             }
         });
     }
+    private void setButtonIcons() {
+        // Load images from resources (adjust paths based on your project structure)
+        Image copyImage = new Image(getClass().getResourceAsStream("/icons/copy.png"));
+        Image undoImage = new Image(getClass().getResourceAsStream("/icons/undo.png"));
+        Image redoImage = new Image(getClass().getResourceAsStream("/icons/redo.png"));
+        Image exportImage = new Image(getClass().getResourceAsStream("/icons/export.png"));
 
+        // Create ImageView instances and set them as button graphics
+        ImageView copyIcon = new ImageView(copyImage);
+        copyIcon.setFitWidth(16); // Adjust size as needed
+        copyIcon.setFitHeight(16);
+        copyWriterCodeButton.setGraphic(copyIcon);
+
+        ImageView copyReaderIcon = new ImageView(copyImage); // Reuse copy icon for reader
+        copyReaderIcon.setFitWidth(16);
+        copyReaderIcon.setFitHeight(16);
+        copyReaderCodeButton.setGraphic(copyReaderIcon);
+
+        ImageView undoIcon = new ImageView(undoImage);
+        undoIcon.setFitWidth(16);
+        undoIcon.setFitHeight(16);
+        undoButton.setGraphic(undoIcon);
+
+        ImageView redoIcon = new ImageView(redoImage);
+        redoIcon.setFitWidth(16);
+        redoIcon.setFitHeight(16);
+        redoButton.setGraphic(redoIcon);
+
+        ImageView exportIcon = new ImageView(exportImage);
+        exportIcon.setFitWidth(16);
+        exportIcon.setFitHeight(16);
+        exportButton.setGraphic(exportIcon);
+    }
     private void setupTextAreaListener() {
         textArea.textProperty().addListener((obs, oldValue, newValue) -> {
             if (isUpdatingTextArea || isProcessingChanges) {
