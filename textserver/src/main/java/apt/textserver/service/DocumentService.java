@@ -101,7 +101,7 @@ public class DocumentService {
                     // Update existing user’s cursor position and connection status
                     existingUser.setCursorPosition(change.getCursorPosition());
                     //existingUser.setIsConnected(change.isConnected());
-                    existingUser.setIsConnected(change.isConnected());
+                    existingUser.setConnected(change.isConnected());
                     if (existingUser.getColor() == null) {
                         existingUser.setColor(generateColor()); // Assign new color if null
                         System.out.println("Assigned new color for existing user " + change.getUserName() + ": " + existingUser.getColor());
