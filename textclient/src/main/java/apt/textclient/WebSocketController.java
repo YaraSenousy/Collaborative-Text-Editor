@@ -32,7 +32,7 @@ public class WebSocketController {
     private String username;
     private String docId;
     private CRDTTree documentTree = new CRDTTree();
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper = JacksonConfig.getObjectMapper();
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
