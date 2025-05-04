@@ -9,6 +9,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.Getter;
@@ -36,6 +37,7 @@ public class WebSocketController {
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
     private ConcurrentHashMap<String,Integer> connectedUsers;
+    private ConcurrentHashMap<String, Cursor> userCursor;
 
 
     public void initializeData( String username,String docId,ConcurrentHashMap<String,Integer> connectedUsers) {

@@ -56,8 +56,10 @@ public class SessionController {
     private boolean isUpdatingTextArea = false;
     private long lastCursorUpdate = 0;
     private static final long CURSOR_UPDATE_INTERVAL = 100;
-    private Map<String, Rectangle> userCursors = new ConcurrentHashMap<>();
-    private static final Map<String, Color> userColors = new ConcurrentHashMap<>();
+    //private Map<String, Rectangle> userCursors = new ConcurrentHashMap<>();
+    //private static final Map<String, Color> userColors = new ConcurrentHashMap<>();
+
+
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -92,10 +94,10 @@ public class SessionController {
             });
         });
 
-        if (userColors.isEmpty()) {  // Only generate colors once
-            wsController.getConnectedUsers().keySet()
-                    .forEach(user -> userColors.putIfAbsent(user, generateColorForUsername(user)));
-        }
+//        if (userColors.isEmpty()) {  // Only generate colors once
+//            wsController.getConnectedUsers().keySet()
+//                    .forEach(user -> userColors.putIfAbsent(user, generateColorForUsername(user)));
+//        }
         //generateColorForUsername(username);
 
         //userColors.clear();
@@ -386,7 +388,7 @@ public class SessionController {
             String user=names.get(i);
             int pos=cursorpos.get(i);
             if (user != null && !user.trim().isEmpty()) {
-                userListView.getItems().add(user + " (Line: " + pos + ")");
+                userListView.getItems().add(user); //+ " (Line: " + pos + ")"); return later
             }
         }
     }
