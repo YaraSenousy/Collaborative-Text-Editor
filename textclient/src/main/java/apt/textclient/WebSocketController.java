@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -36,6 +38,11 @@ public class WebSocketController {
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
+    private boolean isConnected = false;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private long disconnectTime = 0;
+    private static final long RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+    private static final long RECONNECT_INTERVAL_MS = 5000; // Retry every 5 seconds
 
     public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers) {
         this.username = username;
@@ -86,13 +93,14 @@ public class WebSocketController {
             stompClient.setMessageConverter(new CompositeMessageConverter(converters));
 
             String url = "ws://"+SERVER_URL+":8080/ws";
-            StompSessionHandler sessionHandler = new MyStompSessionHandler();
+            StompSessionHandler sessionHandler = new MyStompSessionHandler(this,username,docId);
 
             // Add connection callback
             stompClient.connect(url, sessionHandler)
                     .addCallback(new ListenableFutureCallback<StompSession>() {
                         @Override
                         public void onSuccess(StompSession session) {
+                            isConnected = true;
                             stompSession = session;
                             System.out.println("Successfully connected");
                             // Subscribe to the chat room
@@ -176,8 +184,21 @@ public class WebSocketController {
     public long getClock() {
         return System.nanoTime();
     }
+
+    public void handleDisconnect(String username, String docId) {
+
+    }
 }
 class MyStompSessionHandler extends StompSessionHandlerAdapter {
+    private final WebSocketController controller;
+    private final String username;
+    private final String docId;
+
+    public MyStompSessionHandler(WebSocketController controller, String username, String docId) {
+        this.controller = controller;
+        this.username = username;
+        this.docId = docId;
+    }
     @Override
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
         System.out.println("Connected to WebSocket server!");
@@ -186,5 +207,10 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
     @Override
     public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
         System.err.println("An error occurred: " + exception.getMessage());
+    }
+    @Override
+    public void handleTransportError(StompSession session, Throwable exception) {
+        System.err.println("Transport error: " + exception.getMessage());
+        controller.handleDisconnect(username,docId);
     }
 }
