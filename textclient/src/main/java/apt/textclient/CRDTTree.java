@@ -32,7 +32,10 @@ public class CRDTTree {
         lock.writeLock().lock();
         try {
             
-            if (nodeMap.containsKey(newNode.id)) return;
+            if (nodeMap.containsKey(newNode.id)) {
+                System.out.println("Node already exists, skipping: " + newNode.getId());
+                return;
+            }
 
             Node parent = nodeMap.get(newNode.parentId);
             if (parent != null) {

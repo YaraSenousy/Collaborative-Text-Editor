@@ -167,7 +167,7 @@ public class SessionController {
                     } else if (newValue.length() < oldValue.length()) {
                         String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex);
                         if (nodeIdToDelete != null) {
-                            Node deleteNode = new Node(username, baseClock, tree.getRoot().getId(), ' ', 1);
+                            Node deleteNode = new Node(username, baseClock, tree.getRoot().getId(), oldValue.charAt(changeIndex), 1);
                             deleteNode.setId(nodeIdToDelete);
                             wsController.sendChange(deleteNode);
                             undoStack.push(deleteNode);
@@ -268,7 +268,7 @@ public class SessionController {
         if (!redoStack.isEmpty()) {
             System.out.println("Redo");
             Node redoNode = redoStack.pop();
-            redoNode.setClock(wsController.getClock()); // Assign new clock to avoid duplicate IDs
+            redoNode.setClockNode(wsController.getClock()); // Assign new clock to avoid duplicate IDs
             redoNode.setOperation(redoNode.getOperation() ^ 1); // Toggle operation to match undo behavior
             undoStack.push(redoNode);
             System.out.println("Redo node: " + redoNode.getContent() + ", operation: " + redoNode.getOperation() + ", clock: " + redoNode.getClock());
@@ -293,10 +293,9 @@ public class SessionController {
             System.out.println("Undo");
             Node undoNode = undoStack.pop();
             undoNode.setOperation(undoNode.getOperation() ^ 1); // Toggle operation
-            undoNode.setClock(wsController.getClock()); // Assign new clock to avoid duplicate IDs
+            //undoNode.setClockNode(wsController.getClock()); // Assign new clock to avoid duplicate IDs
             redoStack.push(undoNode);
             System.out.println("Undo node: " + undoNode.getContent() + ", operation: " + undoNode.getOperation() + ", clock: " + undoNode.getClock());
-
             // Update caret position based on operation
             CRDTTree tree = wsController.getDocumentTree();
             int nodePosition = findNodePosition(tree, undoNode.getId());
