@@ -157,9 +157,10 @@ public class SessionController {
                         for (int i = 0; i < insertCount; i++) {
                             int newIndex = changeIndex + i;
                             char newChar = newValue.charAt(newIndex);
-                            long clock = baseClock + i + 1;
+                            long clock = wsController.getClock();
                             Node newNode = new Node(username, clock, parentId, newChar, 0);
                             wsController.sendChange(newNode);
+                            tree.insert(newNode);
                             undoStack.push(newNode);
                             parentId = newNode.getId();
                         }
@@ -170,6 +171,7 @@ public class SessionController {
                             Node deleteNode = new Node(username, baseClock, tree.getRoot().getId(), oldValue.charAt(changeIndex), 1);
                             deleteNode.setId(nodeIdToDelete);
                             wsController.sendChange(deleteNode);
+                            tree.insert(deleteNode);
                             undoStack.push(deleteNode);
                         }
                         expectedCaretPosition = changeIndex;
@@ -319,41 +321,5 @@ public class SessionController {
             }
         }
         return 0; // Default to start if not found
-    }
-
-    private void applyContent(String content) {
-        if (!accessPermission) return;
-
-        String currentContent = textArea.getText();
-        int changeIndex = findFirstChangeIndex(currentContent, content);
-        CRDTTree tree = wsController.getDocumentTree();
-        long clock = wsController.getClock();
-
-        isUpdatingTextArea = true;
-        if (content.length() < currentContent.length()) {
-            int deleteCount = currentContent.length() - content.length();
-            for (int i = 0; i < deleteCount; i++) {
-                String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex);
-                if (nodeIdToDelete != null) {
-                    Node deleteNode = new Node(username, clock, tree.getRoot().getId(), ' ', 1);
-                    deleteNode.setId(nodeIdToDelete);
-                    wsController.sendChange(deleteNode);
-                    clock = wsController.getClock();
-                }
-            }
-        } else if (content.length() > currentContent.length()) {
-            String parentId = changeIndex == 0 ? tree.getRoot().getId() : findNodeIdAtPosition(tree, changeIndex - 1);
-            int insertCount = content.length() - currentContent.length();
-            for (int i = 0; i < insertCount; i++) {
-                int newIndex = changeIndex + i;
-                char newChar = content.charAt(newIndex);
-                Node newNode = new Node(username, clock, parentId, newChar, 0);
-                wsController.sendChange(newNode);
-                parentId = newNode.getId();
-                clock = wsController.getClock();
-            }
-        }
-        textArea.setText(content);
-        isUpdatingTextArea = false;
     }
 }
