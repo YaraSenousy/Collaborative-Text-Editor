@@ -27,6 +27,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 @Getter
 @Setter
 public class WebSocketController {
+    private String SERVER_URL="localhost";
     private StompSession stompSession;
     private String username;
     private String docId;
@@ -84,7 +85,7 @@ public class WebSocketController {
             converters.add(new MappingJackson2MessageConverter());
             stompClient.setMessageConverter(new CompositeMessageConverter(converters));
 
-            String url = "ws://localhost:8080/ws";
+            String url = "ws://"+SERVER_URL+":8080/ws";
             StompSessionHandler sessionHandler = new MyStompSessionHandler();
 
             // Add connection callback
