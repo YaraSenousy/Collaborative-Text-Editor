@@ -99,7 +99,7 @@ public class SignUpController {
                 System.out.println(response.getReadPassword());
                 ConcurrentHashMap<String,User> userMap=new ConcurrentHashMap<>();
                 userMap.put(username,response.getOwner());
-                wsController.initializeData(username,docId,userMap);
+                wsController.initializeData(username,docId,userMap,response.getWritePassword());
                 switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
@@ -165,7 +165,7 @@ public class SignUpController {
                     System.out.println(response.getReadPassword());
                     ConcurrentHashMap<String,User> userMap=new ConcurrentHashMap<>();
                     userMap.put(username,response.getOwner());
-                    wsController.initializeData(username,docId,userMap);
+                    wsController.initializeData(username,docId,userMap, response.getWritePassword());
                     //nodes.forEach(wsController::sendChange);
                     switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
                 } catch (Exception e) {
@@ -236,7 +236,7 @@ public class SignUpController {
                         wsController.getDocumentTree().delete(n.getId());
                     }
                     }
-                    wsController.initializeData(username, docId, response.getConnectedUsers());
+                    wsController.initializeData(username, docId, response.getConnectedUsers(),code);
                     switchToSessionPage(username, "", "", accessType);
                 }else {
                     showAlert("Error", "This username already exists, please choose another.");
