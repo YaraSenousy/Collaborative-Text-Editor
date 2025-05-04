@@ -1,6 +1,7 @@
 package apt.textserver.model;
 
 import com.sun.javafx.geom.Rectangle;
+import javafx.scene.paint.Color;
 import lombok.Getter;
 import lombok.Setter;
 

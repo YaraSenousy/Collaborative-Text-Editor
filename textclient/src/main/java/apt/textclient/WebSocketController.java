@@ -56,7 +56,7 @@ public class WebSocketController {
     }
     private void handleReceivedChange(User newuser){
         if(newuser.isConnected) {
-            connectedUsers.put(newuser.getUserName(), newuser.getCursorPosition());
+            connectedUsers.put(newuser.getUserName(), newuser);
         }else{
             connectedUsers.remove(newuser.getUserName());
         }

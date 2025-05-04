@@ -2,6 +2,8 @@ package apt.textserver.service;
 
 import apt.textserver.model.*;
 //import org.springframework.security.crypto.bcrypt.BCrypt;
+import com.sun.javafx.geom.Rectangle;
+import javafx.scene.paint.Color;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -30,7 +32,10 @@ public class DocumentService {
     }
     public CreateResponse createDocument(ArrayList<Node> importFile,String ownerName) {
         Document doc = new Document();
-        doc.getConnectedUsers().put(ownerName,0);
+        User user= new User(ownerName,0,true);
+        user.setColor(generateColor());
+        //client will create the cursor rect
+        doc.getConnectedUsers().put(ownerName,user);
         if (importFile != null && !importFile.isEmpty()) {
             doc.setChangesNodes(new ConcurrentLinkedQueue<Node>(importFile));
         }
@@ -47,6 +52,7 @@ public class DocumentService {
         response.setDocId(doc.getId());
         response.setReadPassword(readPassword);
         response.setWritePassword(writePassword);
+        response.setOwner(user);
         return response;
     }
 
@@ -59,7 +65,9 @@ public class DocumentService {
                 response.setWritePermission(false);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
                 if(!doc.getConnectedUsers().containsKey(user)) {
-                    doc.getConnectedUsers().put(user, 0);
+                    User newuser=new User(user,0,true);
+                    newuser.setColor(generateColor());
+                    doc.getConnectedUsers().put(user, newuser);
                     response.setConnectedUsers(doc.getConnectedUsers());
                 } else {
                     response.setConnectedUsers(null);
@@ -71,7 +79,9 @@ public class DocumentService {
                 response.setWritePermission(true);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
                 if(!doc.getConnectedUsers().containsKey(user)) {
-                    doc.getConnectedUsers().put(user, 0);
+                    User newuser=new User(user,0,true);
+                    newuser.setColor(generateColor());
+                    doc.getConnectedUsers().put(user, newuser);
                     response.setConnectedUsers(doc.getConnectedUsers());
                 } else {
                     response.setConnectedUsers(null);
@@ -86,12 +96,22 @@ public class DocumentService {
         Document doc = documents.get(docId);
         if(doc!=null) {
             if(change.isConnected()){
-            doc.getConnectedUsers().put(change.getUserName(), change.getCursorPosition());}
+            doc.getConnectedUsers().put(change.getUserName(), change);}
             else{
                 doc.getConnectedUsers().remove(change.getUserName());
             }
         }else {
             System.out.println("Document not found: " + docId);
         }
+    }
+    private Color generateColor() {
+        Random random = new Random();
+        // Hue: 0-360 (full spectrum)
+        float hue = random.nextInt(360);
+        // Saturation: 0.4-0.6 (muted, not too intense)
+        float saturation = 0.4f + random.nextFloat() * 0.2f;
+        // Brightness: 0.3-0.6 (darker range)
+        float brightness = 0.3f + random.nextFloat() * 0.3f;
+        return Color.hsb(hue, saturation, brightness);
     }
 }

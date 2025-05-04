@@ -108,7 +108,10 @@ public class SessionController {
         long now = System.currentTimeMillis();
         if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
             int cursorPosition = textArea.getCaretPosition();
-            wsController.sendUserChange(new User(username, cursorPosition,true));
+            User change=new User(username, cursorPosition,true);
+            change.setColor(wsController.getConnectedUsers().get(username).getColor());
+            change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
+            wsController.sendUserChange(change);
             lastCursorUpdate = now;
         }
     }
@@ -245,13 +248,13 @@ public class SessionController {
             return;
         }
         ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
-        ArrayList<Integer> cursorpos=new ArrayList<>(connectedUsers.values());
+        //ArrayList<Integer> cursorpos=new ArrayList<>(connectedUsers.values());
         // Add users to ListView with line number placeholder
         for (int i = 0; i < connectedUsers.size(); i++) {
             String user=names.get(i);
-            int pos=cursorpos.get(i);
+            //int pos=cursorpos.get(i);
             if (user != null && !user.trim().isEmpty()) {
-                userListView.getItems().add(user + " (Line: " + pos + ")");
+                userListView.getItems().add(user);// + " (Line: " + pos + ")");
             }
         }
     }

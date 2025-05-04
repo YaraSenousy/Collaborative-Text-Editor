@@ -51,7 +51,11 @@ public class SignUpController {
 
                 HttpEntity<String> request = new HttpEntity<>("[]", headers);
                 RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+                converter.setObjectMapper(JacksonConfig.getObjectMapper());
+                restTemplate.getMessageConverters()
+                        .removeIf(m -> m instanceof MappingJackson2HttpMessageConverter); // Remove default Jackson converter
+                restTemplate.getMessageConverters().add(converter);
 
                 CreateResponse response = restTemplate.postForObject(
                         SERVER_URL + "/createDocument/"+username,
@@ -61,8 +65,8 @@ public class SignUpController {
                 String docId = response.getDocId();
                 System.out.println(response.getWritePassword());
                 System.out.println(response.getReadPassword());
-                ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
-                userMap.put(username,0);
+                ConcurrentHashMap<String,User> userMap=new ConcurrentHashMap<>();
+                userMap.put(username,response.getOwner());
                 wsController.initializeData(username,docId,userMap);
                 switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
             } catch (Exception e) {
@@ -107,7 +111,11 @@ public class SignUpController {
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_JSON);
                     RestTemplate restTemplate = new RestTemplate();
-                    restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                    MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+                    converter.setObjectMapper(JacksonConfig.getObjectMapper());
+                    restTemplate.getMessageConverters()
+                            .removeIf(m -> m instanceof MappingJackson2HttpMessageConverter); // Remove default Jackson converter
+                    restTemplate.getMessageConverters().add(converter);
                     ArrayList<Node> requestData=new ArrayList<Node>();
                     requestData.addAll(nodes);
                     ObjectMapper mapper = new ObjectMapper();
@@ -123,8 +131,8 @@ public class SignUpController {
                     String docId = response.getDocId();
                     System.out.println(response.getWritePassword());
                     System.out.println(response.getReadPassword());
-                    ConcurrentHashMap<String,Integer> userMap=new ConcurrentHashMap<>();
-                    userMap.put(username,1);
+                    ConcurrentHashMap<String,User> userMap=new ConcurrentHashMap<>();
+                    userMap.put(username,response.getOwner());
                     wsController.initializeData(username,docId,userMap);
                     //nodes.forEach(wsController::sendChange);
                     switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
@@ -172,7 +180,11 @@ public class SignUpController {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
                 RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+                converter.setObjectMapper(JacksonConfig.getObjectMapper());
+                restTemplate.getMessageConverters()
+                        .removeIf(m -> m instanceof MappingJackson2HttpMessageConverter); // Remove default Jackson converter
+                restTemplate.getMessageConverters().add(converter);
                 ArrayList<String> requestData=new ArrayList<String>();
                 requestData.add(code);
                 ObjectMapper mapper = new ObjectMapper();

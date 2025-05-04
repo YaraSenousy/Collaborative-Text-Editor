@@ -10,4 +10,5 @@ public class CreateResponse {
     String docId;
     String readPassword;
     String writePassword;
+    User owner;
 }
