@@ -102,9 +102,8 @@ public class SessionController {
             readerCodeBox.setVisible(false);
             writerCodeBox.setManaged(true);
         }
-        if(accessPermission){
-            textArea.setEditable(true);
-        } else {textArea.setEditable(false);}
+        textArea.setEditable(accessPermission);
+        System.out.println("TextArea font: " + textArea.getFont().getFamily() + ", size: " + textArea.getFont().getSize()); //figuring out cursor
         //wsController.sendUserChange(new User(username, 1));
         listConnectedUsers();
 
