@@ -11,10 +11,10 @@ import java.util.Comparator;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Node {
     String id;
-    final long clock;
-    final String parentId;
-    final char content;
-    final String userId;
+    long clock;
+    String parentId;
+    char content;
+    String userId;
     boolean isDeleted;
     @JsonIgnore
     TreeSet<Node> children;
@@ -46,5 +46,9 @@ public class Node {
     }
 
 
+    public void setClockNode(long clock){
+        this.clock = clock;
+        this.id = userId + "-" + clock;
+    }
 }
 

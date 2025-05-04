@@ -4,19 +4,22 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
+
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+
+
 
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -24,13 +27,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.web.client.RestTemplate;
 
 public class SignUpController {
     @FXML
     private TextField usernameField;
     @FXML
     private TextField sessionCodeField;
+    @FXML
+    private Button newDocButton;
+    @FXML
+    private Button uploadFileButton;
+    @FXML
+    private Button joinSessionButton;
 
     private WebSocketController wsController;
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -39,6 +47,30 @@ public class SignUpController {
     private static final RestTemplate restTemplate = new RestTemplate();
     public void initialize() {
         wsController = new WebSocketController();
+        setButtonIcons();
+    }
+    private void setButtonIcons() {
+        // Load images from resources (adjust paths based on your project structure)
+        Image joinImage = new Image(getClass().getResourceAsStream("/icons/join.png"));
+        Image importImage = new Image(getClass().getResourceAsStream("/icons/import-white.png"));
+        Image newFileImage = new Image(getClass().getResourceAsStream("/icons/newFile.png"));
+
+
+        // Create ImageView instances and set them as button graphics
+        ImageView newIcon = new ImageView(newFileImage);
+        newIcon.setFitWidth(16); // Adjust size as needed
+        newIcon.setFitHeight(16);
+        newDocButton.setGraphic(newIcon);
+
+        ImageView importIcon = new ImageView(importImage); // Reuse copy icon for reader
+        importIcon.setFitWidth(16);
+        importIcon.setFitHeight(16);
+        uploadFileButton.setGraphic(importIcon);
+
+        ImageView joinIcon = new ImageView(joinImage);
+        joinIcon.setFitWidth(16);
+        joinIcon.setFitHeight(16);
+        joinSessionButton.setGraphic(joinIcon);
     }
 
     @FXML
@@ -189,6 +221,7 @@ public class SignUpController {
                 requestData.add(code);
                 ObjectMapper mapper = new ObjectMapper();
 
+
                 AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess/"+username , requestData, AccessResponse.class);
                 if(response.getConnectedUsers()!=null) {
                     String docId = response.getDocId();
@@ -196,13 +229,19 @@ public class SignUpController {
                     Node[] importedNodes = response.getDocumentNodes();
                     for (Node n : importedNodes) {
                         System.out.println(n.content);
+                        if (n.getOperation() == 0) {
                         wsController.getDocumentTree().insert(n);
+                    }
+                    else{
+                        wsController.getDocumentTree().delete(n.getId());
+                    }
                     }
                     wsController.initializeData(username, docId, response.getConnectedUsers());
                     switchToSessionPage(username, "", "", accessType);
                 }else {
                     showAlert("Error", "This username already exists, please choose another.");
                     return;
+
                 }
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
@@ -225,7 +264,7 @@ public class SignUpController {
             FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("Session.fxml"));
             Scene scene = new Scene(fxmlLoader.load(), 800, 600);
             SessionController sessionController = fxmlLoader.getController();
-            sessionController.initData(wsController, username, readerCode,writerCode, accessType);
+            sessionController.initData(wsController, username, writerCode,readerCode, accessType);
             Stage stage = (Stage) usernameField.getScene().getWindow();
             stage.setScene(scene);
             stage.setTitle("Text Editor - Session");
