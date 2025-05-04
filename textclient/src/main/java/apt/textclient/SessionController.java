@@ -109,16 +109,16 @@ public class SessionController {
         setupTextAreaListener();
         setupCursorListener();
         wsController.setOnDocumentChange(this::updateTextArea);
-        textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
-            if (event.isControlDown() && event.getCode() == KeyCode.Z) {
-                if (event.isShiftDown()) {
-                    redo();
-                } else {
-                    undo();
-                }
-                event.consume();
-            }
-        });
+//        textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+//            if (event.isControlDown() && event.getCode() == KeyCode.Z) {
+//                if (event.isShiftDown()) {
+//                    redo();
+//                } else {
+//                    undo();
+//                }
+//                event.consume();
+//            }
+//        });
 
         wsController.setOnUsersChange(this::listConnectedUsers);
         Platform.runLater(() -> {
@@ -137,6 +137,14 @@ public class SessionController {
         if (textArea != null && wsController != null) {
             // Update cursor position on key press or mouse click
             textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+                if (event.isControlDown() && event.getCode() == KeyCode.Z) {
+                    if (event.isShiftDown()) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                    event.consume();
+                }
                 sendThrottledCursorUpdate();
             });
             textArea.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
@@ -151,9 +159,11 @@ public class SessionController {
         long now = System.currentTimeMillis();
         if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
             int cursorPosition = textArea.getCaretPosition();
+            //int caretPos = textArea.getCaretPosition();
+            //int cursorPosition = textArea.getText(0, caretPos).replaceAll("[^\n]", "").length() + 1;
             User change=new User(username, cursorPosition,true);
-            change.setColor(wsController.getConnectedUsers().get(username).getColor());
-            change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
+            //change.setColor(wsController.getConnectedUsers().get(username).getColor());
+            //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
             wsController.sendUserChange(change);
             lastCursorUpdate = now;
         }
@@ -351,14 +361,14 @@ public class SessionController {
             System.err.println("Warning: getConnectedUsers returned null.");
             return;
         }
-        ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
-        //ArrayList<Integer> cursorpos=new ArrayList<>(connectedUsers.values());
+        //ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
+        ArrayList<User> users=new ArrayList<>(connectedUsers.values());
         // Add users to ListView with line number placeholder
         for (int i = 0; i < connectedUsers.size(); i++) {
-            String user=names.get(i);
-            //int pos=cursorpos.get(i);
-            if (user != null && !user.trim().isEmpty()) {
-                userListView.getItems().add(user);// + " (Line: " + pos + ")");
+            String username=users.get(i).getUserName();
+            int pos=users.get(i).getCursorPosition();
+            if (username != null && !username.trim().isEmpty()) {
+                userListView.getItems().add(username + " (Line: " + pos + ")");
             }
         }
 }

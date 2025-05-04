@@ -104,14 +104,17 @@ public class DocumentService {
             System.out.println("Document not found: " + docId);
         }
     }
-    private Color generateColor() {
+    private String generateColor() {
         Random random = new Random();
-        // Hue: 0-360 (full spectrum)
         float hue = random.nextInt(360);
-        // Saturation: 0.4-0.6 (muted, not too intense)
         float saturation = 0.4f + random.nextFloat() * 0.2f;
-        // Brightness: 0.3-0.6 (darker range)
         float brightness = 0.3f + random.nextFloat() * 0.3f;
-        return Color.hsb(hue, saturation, brightness);
+
+        Color fxColor = Color.hsb(hue, saturation, brightness);
+        return String.format("#%02X%02X%02X",
+                (int)(fxColor.getRed() * 255),
+                (int)(fxColor.getGreen() * 255),
+                (int)(fxColor.getBlue() * 255)
+        );
     }
 }

@@ -29,6 +29,7 @@ public class WebSocketController {
     @SendTo("/topic/change/{docId}")
     public User handleChange(User change, @DestinationVariable String docId) {
         //TODO: deal with new connections and cursor position changes
+        System.out.println("recieved change from user: "+change.getUserName());
         documentService.changeCursor(docId, change);
         return change;
     }
