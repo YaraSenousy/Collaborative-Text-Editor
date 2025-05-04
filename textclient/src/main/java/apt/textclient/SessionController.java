@@ -166,10 +166,21 @@ public class SessionController {
                         }
                         expectedCaretPosition = changeIndex + insertCount;
                     } else if (newValue.length() < oldValue.length()) {
-                        String nodeIdToDelete = findNodeIdAtPosition(tree, changeIndex);
-                        if (nodeIdToDelete != null) {
-                            Node deleteNode = new Node(username, baseClock, tree.getRoot().getId(), oldValue.charAt(changeIndex), 1);
-                            deleteNode.setId(nodeIdToDelete);
+                        int deleteCount = oldValue.length() - newValue.length();
+                        List<Node> nodesToDelete = new ArrayList<>();
+                        for (int i = 0; i < deleteCount; i++) {
+                            int positionToDelete = changeIndex + i;
+                            String nodeIdToDelete = findNodeIdAtPosition(tree, positionToDelete);
+                            if (nodeIdToDelete != null) {
+                                Node originalNode = tree.getNodeMap().get(nodeIdToDelete);
+                                if (originalNode != null && !originalNode.isDeleted) {
+                                    nodesToDelete.add(originalNode);
+                                }
+                            }
+                        }
+                        for (Node node : nodesToDelete) {
+                            Node deleteNode = new Node(username, baseClock, tree.getRoot().getId(), node.getContent(), 1);
+                            deleteNode.setId(node.getId());
                             wsController.sendChange(deleteNode);
                             tree.insert(deleteNode);
                             undoStack.push(deleteNode);
@@ -270,20 +281,18 @@ public class SessionController {
         if (!redoStack.isEmpty()) {
             System.out.println("Redo");
             Node redoNode = redoStack.pop();
+            CRDTTree tree = wsController.getDocumentTree();
+            int nodePosition = findNodePosition(tree, redoNode.getId());
             redoNode.setOperation(redoNode.getOperation() ^ 1); // Toggle operation
             undoStack.push(redoNode);
             System.out.println("Redo node: " + redoNode.getContent() + ", operation: " + redoNode.getOperation() + ", clock: " + redoNode.getClock());
-
-            CRDTTree tree = wsController.getDocumentTree();
-            int nodePosition = findNodePosition(tree, redoNode.getId());
             if (redoNode.getOperation() == 0) { // Insert
                 expectedCaretPosition = nodePosition + 1;
-                tree.insert(redoNode); // Apply locally
+                tree.insert(redoNode);
             } else { // Delete
                 expectedCaretPosition = nodePosition;
-                tree.delete(redoNode.getId()); // Apply locally
+                tree.delete(redoNode.getId());
             }
-
             wsController.sendChange(redoNode);
             updateTextArea();
         }
