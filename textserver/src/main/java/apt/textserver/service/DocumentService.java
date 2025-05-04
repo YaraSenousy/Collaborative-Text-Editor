@@ -96,6 +96,7 @@ public class DocumentService {
         Document doc = documents.get(docId);
         if (doc != null) {
             if (change.isConnected()) {
+                System.out.println("Received cursor update for " + change.getUserName() + ": " + change.getCursorPosition());
                 User existingUser = doc.getConnectedUsers().get(change.getUserName());
                 if (existingUser != null) {
                     // Update existing user’s cursor position and connection status

@@ -17,7 +17,7 @@
     </padding>
     <center>
         <StackPane>
-            <TextArea fx:id="textArea" wrapText="true" style="-fx-font-size: 14px;"/>
+            <TextArea fx:id="textArea" wrapText="true" style="-fx-font-size: 14px; -fx-font-family: 'Consolas';"/>
             <Pane fx:id="cursorOverlay" mouseTransparent="true"/>
         </StackPane>
     </center>
