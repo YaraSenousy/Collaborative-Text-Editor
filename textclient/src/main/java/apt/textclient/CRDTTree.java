@@ -4,6 +4,7 @@ import lombok.Setter;
 
 import javax.net.ssl.SSLSession;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
@@ -18,7 +19,7 @@ import java.io.IOException;
 @Setter
 public class CRDTTree {
     public final Node root;
-    private final Map<String, Node> nodeMap = new HashMap<>();
+    private final ConcurrentHashMap<String, Node> nodeMap = new ConcurrentHashMap<>();
     private final Map<String, List<Node>> orphanedNodes = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     //private final Queue<Node> pendingNodes = new LinkedList<>();

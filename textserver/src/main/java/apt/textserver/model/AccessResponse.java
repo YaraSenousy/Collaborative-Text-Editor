@@ -13,4 +13,5 @@ public class AccessResponse
     boolean writePermission; //true for write access, false for read access
     Node [] documentNodes;
     ConcurrentHashMap<String,User> connectedUsers;
+    ConcurrentHashMap<String,Comment> comments;
 }

@@ -64,6 +64,7 @@ public class DocumentService {
                 response.setDocId(doc.getId());
                 response.setWritePermission(false);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
+                response.setComments(doc.getComments());
                 if(!doc.getConnectedUsers().containsKey(user)) {
                     User newuser=new User(user,0,true);
                     newuser.setColor(generateColor());
@@ -78,6 +79,7 @@ public class DocumentService {
                 response.setDocId(doc.getId());
                 response.setWritePermission(true);
                 response.setDocumentNodes(doc.getChangesNodes().toArray(new Node[0]));
+                response.setComments(doc.getComments());
                 if(!doc.getConnectedUsers().containsKey(user)) {
                     User newuser=new User(user,0,true);
                     newuser.setColor(generateColor());
@@ -116,5 +118,18 @@ public class DocumentService {
                 (int)(fxColor.getGreen() * 255),
                 (int)(fxColor.getBlue() * 255)
         );
+    }
+    public void changeComment(String docId, Comment comment){
+        Document doc = documents.get(docId);
+        if(doc!=null) {
+            if(comment.getOperation() == 0) {
+                doc.getComments().put(comment.getId(), comment);
+            }
+            else{
+                doc.getComments().remove(comment.getId());
+            }
+        }else {
+            System.out.println("Document not found: " + docId);
+        }
     }
 }
