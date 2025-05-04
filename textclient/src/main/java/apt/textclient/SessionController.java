@@ -268,18 +268,18 @@ public class SessionController {
         if (!redoStack.isEmpty()) {
             System.out.println("Redo");
             Node redoNode = redoStack.pop();
-            redoNode.setClockNode(wsController.getClock()); // Assign new clock to avoid duplicate IDs
-            redoNode.setOperation(redoNode.getOperation() ^ 1); // Toggle operation to match undo behavior
+            redoNode.setOperation(redoNode.getOperation() ^ 1); // Toggle operation
             undoStack.push(redoNode);
             System.out.println("Redo node: " + redoNode.getContent() + ", operation: " + redoNode.getOperation() + ", clock: " + redoNode.getClock());
 
-            // Update caret position based on operation
             CRDTTree tree = wsController.getDocumentTree();
             int nodePosition = findNodePosition(tree, redoNode.getId());
             if (redoNode.getOperation() == 0) { // Insert
                 expectedCaretPosition = nodePosition + 1;
+                tree.insert(redoNode); // Apply locally
             } else { // Delete
                 expectedCaretPosition = nodePosition;
+                tree.delete(redoNode.getId()); // Apply locally
             }
 
             wsController.sendChange(redoNode);
@@ -293,16 +293,17 @@ public class SessionController {
             System.out.println("Undo");
             Node undoNode = undoStack.pop();
             undoNode.setOperation(undoNode.getOperation() ^ 1); // Toggle operation
-            //undoNode.setClockNode(wsController.getClock()); // Assign new clock to avoid duplicate IDs
             redoStack.push(undoNode);
             System.out.println("Undo node: " + undoNode.getContent() + ", operation: " + undoNode.getOperation() + ", clock: " + undoNode.getClock());
-            // Update caret position based on operation
+
             CRDTTree tree = wsController.getDocumentTree();
             int nodePosition = findNodePosition(tree, undoNode.getId());
             if (undoNode.getOperation() == 0) { // Insert
                 expectedCaretPosition = nodePosition + 1;
+                tree.insert(undoNode); // Apply locally
             } else { // Delete
                 expectedCaretPosition = nodePosition;
+                tree.delete(undoNode.getId()); // Apply locally
             }
 
             wsController.sendChange(undoNode);

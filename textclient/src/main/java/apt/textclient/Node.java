@@ -12,9 +12,9 @@ import java.util.Comparator;
 public class Node {
     String id;
     long clock;
-    final String parentId;
-    final char content;
-    final String userId;
+    String parentId;
+    char content;
+    String userId;
     boolean isDeleted;
     @JsonIgnore
     TreeSet<Node> children;

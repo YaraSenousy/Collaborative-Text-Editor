@@ -31,17 +31,30 @@ public class CRDTTree {
     public void insert(Node newNode) {
         lock.writeLock().lock();
         try {
-            
-            if (nodeMap.containsKey(newNode.id)) {
-                System.out.println("Node already exists, skipping: " + newNode.getId());
-                return;
+
+            System.out.println("Attempting to insert node: " + newNode.getContent() + ", id: " + newNode.getId() + ", parentId: " + newNode.getParentId());
+            Node existingNode = nodeMap.get(newNode.id);
+            if (existingNode != null) {
+                if (existingNode.isDeleted) {
+                    System.out.println("Node exists but is deleted, reviving: " + newNode.getId());
+                    existingNode.isDeleted = false;
+                    return;
+                } else {
+                    System.out.println("Node already exists and not deleted, skipping: " + newNode.getId());
+                    return;
+                }
             }
 
             Node parent = nodeMap.get(newNode.parentId);
-            if (parent != null) {
-                parent.children.add(newNode);
-                nodeMap.put(newNode.id, newNode);
+            if (parent == null) {
+                System.out.println("Parent not found for node " + newNode.getId() + ", re-parenting to root");
+                parent = root;
+                newNode.setParentId(root.getId());
             }
+
+            parent.children.add(newNode);
+            nodeMap.put(newNode.id, newNode);
+            System.out.println("Inserted node: " + newNode.getContent() + " under parent " + newNode.getParentId());
         } finally {
             lock.writeLock().unlock();
         }
