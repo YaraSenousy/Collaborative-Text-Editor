@@ -45,6 +45,8 @@ public class SessionController {
     private HBox writerCodeBox;
     @FXML
     private HBox readerCodeBox;
+    @FXML
+    private Pane cursorLayer;
 
     private WebSocketController wsController;
     private String username;
@@ -54,7 +56,6 @@ public class SessionController {
     private boolean isUpdatingTextArea = false;
     private long lastCursorUpdate = 0;
     private static final long CURSOR_UPDATE_INTERVAL = 100;
-    private Pane cursorLayer;
     private Map<String, Rectangle> userCursors = new ConcurrentHashMap<>();
     private static final Map<String, Color> userColors = new ConcurrentHashMap<>();
 
@@ -95,7 +96,7 @@ public class SessionController {
             wsController.getConnectedUsers().keySet()
                     .forEach(user -> userColors.putIfAbsent(user, generateColorForUsername(user)));
         }
-        generateColorForUsername(username);
+        //generateColorForUsername(username);
 
         //userColors.clear();
     }
