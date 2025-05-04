@@ -10,13 +10,31 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.application.Application;
+import javafx.stage.Stage;
+import javafx.stage.Window;
+import javafx.stage.WindowEvent;
+import javafx.event.EventHandler;
+
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
 import java.util.*;
+
 
 public class SessionController {
     @FXML
@@ -48,10 +66,15 @@ public class SessionController {
     private String readerCode;
     private boolean accessPermission;
     private boolean isUpdatingTextArea = false;
+
+    private long lastCursorUpdate = 0;
+    private static final long CURSOR_UPDATE_INTERVAL = 100;
+
     private Stack<Node> undoStack = new Stack<>();
     private Stack<Node> redoStack = new Stack<>();
     private boolean isProcessingChanges = false;
     private int expectedCaretPosition = 0;
+
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -70,10 +93,11 @@ public class SessionController {
             readerCodeBox.setVisible(false);
             writerCodeBox.setManaged(true);
         }
-
-        userListView.getItems().add(username + " (Line: 1)");
-        userListView.getItems().add("User2 (Line: 3)");
-        userListView.getItems().add("User3 (Line: 5)");
+        if(accessPermission){
+            textArea.setEditable(true);
+        } else {textArea.setEditable(false);}
+        //wsController.sendUserChange(new User(username, 1));
+        listConnectedUsers();
 
         textArea.setEditable(accessPermission);
         undoButton.setDisable(!accessPermission);
@@ -83,18 +107,67 @@ public class SessionController {
         setButtonIcons();
         updateTextArea();
         setupTextAreaListener();
+        setupCursorListener();
         wsController.setOnDocumentChange(this::updateTextArea);
+//        textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+//            if (event.isControlDown() && event.getCode() == KeyCode.Z) {
+//                if (event.isShiftDown()) {
+//                    redo();
+//                } else {
+//                    undo();
+//                }
+//                event.consume();
+//            }
+//        });
 
-        textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
-            if (event.isControlDown() && event.getCode() == KeyCode.Z) {
-                if (event.isShiftDown()) {
-                    redo();
-                } else {
-                    undo();
-                }
-                event.consume();
-            }
+        wsController.setOnUsersChange(this::listConnectedUsers);
+        Platform.runLater(() -> {
+            Window window = textArea.getScene().getWindow();
+            window.setOnCloseRequest(event -> {
+                handleWindowClosing();
+            });
         });
+    }
+
+    private void handleWindowClosing() {
+        wsController.sendDisconnected();
+    }
+
+    private void setupCursorListener() {
+        if (textArea != null && wsController != null) {
+            // Update cursor position on key press or mouse click
+            textArea.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+                if (event.isControlDown() && event.getCode() == KeyCode.Z) {
+                    if (event.isShiftDown()) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                    event.consume();
+                }
+                sendThrottledCursorUpdate();
+            });
+            textArea.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+                sendThrottledCursorUpdate();
+            });
+        } else {
+            System.err.println("Error: textArea or wsController is null, cannot set up cursor listener.");
+        }
+    }
+
+    private void sendThrottledCursorUpdate() {
+        long now = System.currentTimeMillis();
+        if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
+            int cursorPosition = textArea.getCaretPosition();
+            //int caretPos = textArea.getCaretPosition();
+            //int cursorPosition = textArea.getText(0, caretPos).replaceAll("[^\n]", "").length() + 1;
+            User change=new User(username, cursorPosition,true);
+            //change.setColor(wsController.getConnectedUsers().get(username).getColor());
+            //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
+            wsController.sendUserChange(change);
+            lastCursorUpdate = now;
+        }
+
     }
     private void setButtonIcons() {
         // Load images from resources (adjust paths based on your project structure)
@@ -275,6 +348,30 @@ public class SessionController {
         content.putString(readerCode);
         clipboard.setContent(content);
     }
+    private void listConnectedUsers(){
+        if (userListView == null || wsController == null) {
+            System.err.println("Error: userListView or wsController is null, cannot update user list.");
+            return;
+        }
+
+        userListView.getItems().clear();
+        ConcurrentHashMap<String,User> connectedUsers=wsController.getConnectedUsers();
+        // Get connected users from document
+        if (connectedUsers == null) {
+            System.err.println("Warning: getConnectedUsers returned null.");
+            return;
+        }
+        //ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
+        ArrayList<User> users=new ArrayList<>(connectedUsers.values());
+        // Add users to ListView with line number placeholder
+        for (int i = 0; i < connectedUsers.size(); i++) {
+            String username=users.get(i).getUserName();
+            int pos=users.get(i).getCursorPosition();
+            if (username != null && !username.trim().isEmpty()) {
+                userListView.getItems().add(username + " (Line: " + pos + ")");
+            }
+        }
+}
 
     @FXML
     private void redo() {

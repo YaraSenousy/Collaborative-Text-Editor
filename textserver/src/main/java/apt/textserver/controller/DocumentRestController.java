@@ -8,10 +8,7 @@ import apt.textserver.service.DocumentService;
 import java.util.ArrayList;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestController
@@ -24,17 +21,17 @@ public class DocumentRestController {
     public String hello() {
         return "Hello, World!";
     }
-    @PostMapping("/createDocument")
-    public CreateResponse createDocument(@RequestBody(required = false) ArrayList<Node> importFile) {
+    @PostMapping("/createDocument/{user}")
+    public CreateResponse createDocument(@RequestBody(required = false) ArrayList<Node> importFile, @PathVariable String user) {
         if (importFile == null){
             importFile = new ArrayList<>();
         }
-        return documentService.createDocument(importFile);
+        return documentService.createDocument(importFile,user);
     }
-    @PostMapping("/grantAccess")
-    public AccessResponse grantAccess(@RequestBody ArrayList<String> password) {
+    @PostMapping("/grantAccess/{user}")
+    public AccessResponse grantAccess(@RequestBody ArrayList<String> password,@PathVariable String user) {
 
-        AccessResponse response = documentService.grantAccess(password.getFirst());
+        AccessResponse response = documentService.grantAccess(password.getFirst(),user);
         if (response == null){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Document not found");
         }else{
