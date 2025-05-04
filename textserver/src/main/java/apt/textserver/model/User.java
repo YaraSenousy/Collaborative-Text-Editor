@@ -1,7 +1,10 @@
 package apt.textserver.model;
 
+import com.sun.javafx.geom.Rectangle;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.awt.*;
 
 @Getter
 @Setter
@@ -9,6 +12,8 @@ public class User {
     String userName;
     int cursorPosition;
     boolean isConnected;
+    Rectangle cursor;
+    Color color;
     public User(String name,int cursorPos,boolean isconnected){
         this.userName=name;
         this.cursorPosition=cursorPos;

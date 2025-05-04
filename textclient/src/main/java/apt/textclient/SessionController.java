@@ -238,7 +238,7 @@ public class SessionController {
         }
 
         userListView.getItems().clear();
-        ConcurrentHashMap<String,Integer> connectedUsers=wsController.getConnectedUsers();
+        ConcurrentHashMap<String,User> connectedUsers=wsController.getConnectedUsers();
         // Get connected users from document
         if (connectedUsers == null) {
             System.err.println("Warning: getConnectedUsers returned null.");

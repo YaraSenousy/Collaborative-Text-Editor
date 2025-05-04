@@ -1,6 +1,5 @@
 package apt.textclient;
 
-import apt.textclient.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -35,10 +34,9 @@ public class WebSocketController {
     private ObjectMapper objectMapper = new ObjectMapper();
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
-    private ConcurrentHashMap<String,Integer> connectedUsers;
+    private ConcurrentHashMap<String, User> connectedUsers;
 
-
-    public void initializeData( String username,String docId,ConcurrentHashMap<String,Integer> connectedUsers) {
+    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers) {
         this.username = username;
         this.docId = docId;
         this.connectedUsers=connectedUsers;
