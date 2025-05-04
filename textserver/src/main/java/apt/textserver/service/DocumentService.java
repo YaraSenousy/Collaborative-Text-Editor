@@ -94,16 +94,34 @@ public class DocumentService {
 
     public void changeCursor(String docId, User change) {
         Document doc = documents.get(docId);
-        if(doc!=null) {
-            if(change.isConnected()){
-            doc.getConnectedUsers().put(change.getUserName(), change);}
-            else{
+        if (doc != null) {
+            if (change.isConnected()) {
+                User existingUser = doc.getConnectedUsers().get(change.getUserName());
+                if (existingUser != null) {
+                    // Update existing user’s cursor position and connection status
+                    existingUser.setCursorPosition(change.getCursorPosition());
+                    existingUser.setIsConnected(change.getIsConnected());
+                    if (existingUser.getColor() == null) {
+                        existingUser.setColor(generateColor()); // Assign new color if null
+                        System.out.println("Assigned new color for existing user " + change.getUserName() + ": " + existingUser.getColor());
+                    }
+                    doc.getConnectedUsers().put(change.getUserName(), existingUser);
+                } else {
+                    if (change.getColor() == null) {
+                        change.setColor(generateColor());
+                        System.out.println("Assigned new color for new user " + change.getUserName() + ": " + change.getColor());
+                    }
+                    doc.getConnectedUsers().put(change.getUserName(), change);
+                }
+            } else {
                 doc.getConnectedUsers().remove(change.getUserName());
+                System.out.println("Removed user " + change.getUserName() + " from document " + docId);
             }
-        }else {
+        } else {
             System.out.println("Document not found: " + docId);
         }
     }
+
     private String generateColor() {
         Random random = new Random();
         float hue = random.nextInt(360);

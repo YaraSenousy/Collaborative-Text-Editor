@@ -1,5 +1,7 @@
 package apt.textclient;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -14,6 +16,9 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.application.Application;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
@@ -24,6 +29,7 @@ import javafx.scene.input.KeyEvent;
 
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
+import javafx.util.Duration;
 
 import java.io.File;
 
@@ -59,6 +65,8 @@ public class SessionController {
     private Button undoButton;
     @FXML
     private Button redoButton;
+    @FXML
+    private Pane cursorOverlay;
 
     private WebSocketController wsController;
     private String username;
@@ -74,7 +82,8 @@ public class SessionController {
     private Stack<Node> redoStack = new Stack<>();
     private boolean isProcessingChanges = false;
     private int expectedCaretPosition = 0;
-
+    private Map<String, Rectangle> cursor = new HashMap<>();
+    private Timeline cursorBlinkTimeline;
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -127,6 +136,14 @@ public class SessionController {
                 handleWindowClosing();
             });
         });
+
+        cursorBlinkTimeline = new Timeline(
+                new KeyFrame(Duration.millis(500), event -> {
+                    cursor.values().forEach(rect -> rect.setVisible(!rect.isVisible()));
+                })
+        );
+        cursorBlinkTimeline.setCycleCount(Timeline.INDEFINITE);
+        cursorBlinkTimeline.play();
     }
 
     private void handleWindowClosing() {
@@ -162,6 +179,10 @@ public class SessionController {
             //int caretPos = textArea.getCaretPosition();
             //int cursorPosition = textArea.getText(0, caretPos).replaceAll("[^\n]", "").length() + 1;
             User change=new User(username, cursorPosition,true);
+            User existingUser = wsController.getConnectedUsers().get(username);
+            if(existingUser!=null && existingUser.getColor()!=null){
+             change.setColor(existingUser.color);
+            }
             //change.setColor(wsController.getConnectedUsers().get(username).getColor());
             //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
             wsController.sendUserChange(change);
@@ -348,30 +369,62 @@ public class SessionController {
         content.putString(readerCode);
         clipboard.setContent(content);
     }
-    private void listConnectedUsers(){
+    private void listConnectedUsers() {
         if (userListView == null || wsController == null) {
             System.err.println("Error: userListView or wsController is null, cannot update user list.");
             return;
         }
 
         userListView.getItems().clear();
-        ConcurrentHashMap<String,User> connectedUsers=wsController.getConnectedUsers();
+        cursorOverlay.getChildren().clear();
+
+        ConcurrentHashMap<String, User> connectedUsers = wsController.getConnectedUsers();
         // Get connected users from document
         if (connectedUsers == null) {
             System.err.println("Warning: getConnectedUsers returned null.");
             return;
         }
+
+        double charWidth = 8.0; //trail and error
+        double lineHeight = 14.0; //trial and error
         //ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
-        ArrayList<User> users=new ArrayList<>(connectedUsers.values());
+        ArrayList<User> users = new ArrayList<>(connectedUsers.values());
         // Add users to ListView with line number placeholder
-        for (int i = 0; i < connectedUsers.size(); i++) {
-            String username=users.get(i).getUserName();
-            int pos=users.get(i).getCursorPosition();
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
+            String username = users.get(i).getUserName();
+            int pos = users.get(i).getCursorPosition();
             if (username != null && !username.trim().isEmpty()) {
-                userListView.getItems().add(username + " (Line: " + pos + ")");
+                userListView.getItems().add(username);// + " (Line: " + pos + ")");
             }
+            if(username.equals((this.username))){continue;}
+            Rectangle rect = cursor.computeIfAbsent(username, k -> {
+                Rectangle r = new Rectangle(2, lineHeight); // 2px wide, font height
+                r.setVisible(true);
+                return r;
+            });
+
+            try {
+                rect.setFill(Color.web(user.getColor()));
+            } catch (Exception e) {
+                System.err.println("Invalid color for " + username + ": " + user.getColor());
+                rect.setFill(Color.BLACK); // Fallback
+            }
+
+            String text = textArea.getText(0, Math.min(pos, textArea.getText().length()));
+            int row = text.split("\n").length - 1;
+            int lastNewline = text.lastIndexOf('\n');
+            int col = pos - (lastNewline == -1 ? 0 : lastNewline + 1);
+            double x = col * charWidth + (i * 2); // Offset for overlapping cursors
+            double y = row * lineHeight - textArea.getScrollTop();
+
+            rect.setX(x);
+            rect.setY(y);
+            cursorOverlay.getChildren().add(rect);
+
         }
-}
+        cursor.keySet().retainAll(connectedUsers.keySet());
+    }
 
     @FXML
     private void redo() {
