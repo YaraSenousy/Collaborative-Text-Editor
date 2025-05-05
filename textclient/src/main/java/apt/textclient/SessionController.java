@@ -88,7 +88,6 @@ public class SessionController {
         this.readerCode = readerCode;
         this.accessPermission = accessPermission;
 
-        System.out.println("access: "+accessPermission);
         if (!Objects.equals(writerCode, "")) {
             writerCodeBox.setVisible(true);
             readerCodeBox.setVisible(true);
@@ -101,9 +100,7 @@ public class SessionController {
         }
         textArea.setEditable(accessPermission);
         textArea.setFont(new Font("Consolas", 14));
-        System.out.println("TextArea font: " + textArea.getFont().getFamily() + ", size: " + textArea.getFont().getSize()); //figuring out cursor
-        //System.out.println("CharWidth: " + getCharWidth() + ", LineHeight: " + getLineHeight());
-        //wsController.sendUserChange(new User(username, 1));
+
         listConnectedUsers();
 
         textArea.setEditable(accessPermission);
@@ -210,22 +207,9 @@ public class SessionController {
         long now = System.currentTimeMillis();
         if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
             int cursorPosition = textArea.getCaretPosition();
-            System.out.println("Sending cursor position for " + username + ": " + cursorPosition + ", text: " + textArea.getText());
-            //int caretPos = textArea.getCaretPosition();
-            //int cursorPosition = textArea.getText(0, caretPos).replaceAll("[^\n]", "").length() + 1;
+
             User change=new User(username, cursorPosition,true);
-//            User existingUser = wsController.getConnectedUsers().get(username);
-//            if(existingUser!=null && existingUser.getColor()!=null){
-//             change.setColor(existingUser.color);
-//            }else{
-//                String assignedColor = assignColorFromPalette(username);
-//                change.setColor(assignedColor);
-//                if (existingUser != null) {
-//                    existingUser.setColor(assignedColor);
-//                }
-//            }
-            //change.setColor(wsController.getConnectedUsers().get(username).getColor());
-            //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
+//
             wsController.sendUserChange(change);
             lastCursorUpdate = now;
         }
@@ -377,7 +361,6 @@ public class SessionController {
             }
             isUpdatingTextArea = true;
             try {
-                System.out.println("Updating screen");
                 CRDTTree tree = wsController.getDocumentTree();
                 List<Character> chars = tree.traverse();
                 StringBuilder content = new StringBuilder();
@@ -446,11 +429,7 @@ public class SessionController {
         double textAreaWidth = textArea.getWidth() - textArea.getPadding().getLeft() - textArea.getPadding().getRight();
         int charsPerLine = (int) (textAreaWidth / charWidth);
 
-        // Debug output for metrics
-        System.out.println("Text metrics - Char width: " + charWidth +
-                ", Line height: " + lineHeight +
-                ", Chars per line: " + charsPerLine +
-                ", Text length: " + textArea.getText().length());
+
 
         // Process each user
         ArrayList<User> users = new ArrayList<>(connectedUsers.values());
@@ -464,7 +443,6 @@ public class SessionController {
             String username = user.getUserName();
             int pos = Math.min(user.getCursorPosition(), textArea.getText().length());
 
-            System.out.println("Processing user: " + username + ", pos: " + pos);
 
             // Add to user list
             if (username != null && !username.trim().isEmpty()) {
@@ -481,34 +459,12 @@ public class SessionController {
                 return r;
             });
 
-            // Set cursor color
-//            String color = user.getColor();
-//            if (color == null || color.trim().isEmpty()) {
-//                System.out.println("No color for " + username + ", assigning from palette.");
-//                color = assignColorFromPalette(username);
-//                user.setColor(color); // Update the User object
-//                // Notify other clients of the updated user color
-//                User updatedUser = new User(username, pos, true);
-//                updatedUser.setColor(color);
-//                wsController.sendUserChange(updatedUser);
-//            }
-//            try {
-//                if (color == null || color.trim().isEmpty()) {
-//                    rect.setFill(Color.web(color));
-//                    System.out.println("Set cursor color for " + username + " to " + color);
-//                } else {
-//                    rect.setFill(Color.web(color));
-//                }
-//            } catch (Exception e) {
-//                System.err.println("Invalid color for " + username + ": " + color + ", using default.");
-//                rect.setFill(Color.BLACK);
-//            }
+
             // Assign a random color from the palette
             String randomColor = COLOR_PALETTE[colorNumber];
             colorNumber++;
             try {
                 rect.setFill(Color.web(randomColor));
-                System.out.println("Set cursor color for " + username + " to " + randomColor);
             } catch (Exception e) {
                 System.err.println("Invalid color for " + username + ": " + randomColor + ", using default.");
                 rect.setFill(Color.BLACK);
@@ -545,7 +501,6 @@ public class SessionController {
                             wordLength++;
                         }
                         col = wordLength; // Set col to the length of the first word
-                        System.out.println("Debug: Wrap at " + wrapPoint + ", wrappedText='" + wrappedText + "', col set to " + col);
                         charsProcessed += col; // Move forward by the word length
                     } else {
                         charsProcessed += charsThisLine;
@@ -585,9 +540,7 @@ public class SessionController {
             x = Math.max(0, Math.min(x, textAreaWidth - charWidth));
             y = Math.max(0, y);
 
-            System.out.println("Final position - User: " + username +
-                    ", pos: " + pos + ", row: " + row +
-                    ", col: " + col + ", x: " + x + ", y: " + y);
+
 
             // Set cursor position
             rect.setX(x);
@@ -658,13 +611,11 @@ public class SessionController {
     @FXML
     private void redo() {
         if (!redoStack.isEmpty()) {
-            System.out.println("Redo");
             Node redoNode = redoStack.pop();
             CRDTTree tree = wsController.getDocumentTree();
             int nodePosition = findNodePosition(tree, redoNode.getId());
             redoNode.setOperation(redoNode.getOperation() ^ 1); // Toggle operation
             undoStack.push(redoNode);
-            System.out.println("Redo node: " + redoNode.getContent() + ", operation: " + redoNode.getOperation() + ", clock: " + redoNode.getClock());
             if (redoNode.getOperation() == 0) { // Insert
                 expectedCaretPosition = nodePosition + 1;
                 tree.insert(redoNode);
@@ -680,11 +631,9 @@ public class SessionController {
     @FXML
     private void undo() {
         if (!undoStack.isEmpty()) {
-            System.out.println("Undo");
             Node undoNode = undoStack.pop();
             undoNode.setOperation(undoNode.getOperation() ^ 1); // Toggle operation
             redoStack.push(undoNode);
-            System.out.println("Undo node: " + undoNode.getContent() + ", operation: " + undoNode.getOperation() + ", clock: " + undoNode.getClock());
 
             CRDTTree tree = wsController.getDocumentTree();
             int nodePosition = findNodePosition(tree, undoNode.getId());
@@ -713,7 +662,6 @@ public class SessionController {
 
     private void adjustComments() {
         CRDTTree tree = wsController.getDocumentTree();
-        System.out.println("Adjusting comments");
         ConcurrentHashMap<String, Comment> comments = wsController.getComments();
         if (comments == null) {
             return;
@@ -853,7 +801,6 @@ public class SessionController {
         javafx.scene.text.Text text = new javafx.scene.text.Text("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
         text.setFont(textArea.getFont());
         double width = text.getLayoutBounds().getWidth() / 52.0; // Average width
-        System.out.println("CharWidth: " + width);
         return width ; // again trial and error idk what im doing atp
     }
 
