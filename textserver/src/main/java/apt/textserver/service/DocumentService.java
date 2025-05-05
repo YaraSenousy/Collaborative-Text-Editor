@@ -14,6 +14,7 @@ import java.security.SecureRandom;
 
 @Service
 public class DocumentService {
+    private final Map<String, Long> sessionStartTimes = new ConcurrentHashMap<>();
     ConcurrentHashMap<String, Document> documents = new ConcurrentHashMap<>();
     public void addChange(String docId, Node change){
         Document doc = documents.get(docId);
@@ -116,5 +117,8 @@ public class DocumentService {
                 (int)(fxColor.getGreen() * 255),
                 (int)(fxColor.getBlue() * 255)
         );
+    }
+    public long getOrCreateSessionStartTime(String docId) {
+        return sessionStartTimes.computeIfAbsent(docId, k -> System.currentTimeMillis());
     }
 }

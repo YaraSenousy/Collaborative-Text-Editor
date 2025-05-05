@@ -9,12 +9,21 @@ import org.springframework.stereotype.Controller;
 import apt.textserver.model.Node;
 import apt.textserver.service.DocumentService;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 
 @Controller
 public class WebSocketController {
     DocumentService documentService;
     public WebSocketController(DocumentService documentService) {
         this.documentService = documentService;
+    }
+
+    @MessageMapping("/sessionInfo/{docId}")
+    @SendTo("/topic/sessionInfo/{docId}")
+    public long getSessionInfo(@DestinationVariable String docId) {
+        return documentService.getOrCreateSessionStartTime(docId);
     }
 
     @MessageMapping("/document/{docId}")

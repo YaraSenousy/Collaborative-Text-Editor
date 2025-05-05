@@ -8,6 +8,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.Getter;
@@ -15,6 +16,9 @@ import lombok.Setter;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -23,6 +27,7 @@ import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.springframework.util.concurrent.ListenableFutureCallback;
+
 
 @Getter
 @Setter
@@ -37,6 +42,9 @@ public class WebSocketController {
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
 
+    // In DocumentService.java
+
+
     public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers) {
         this.username = username;
         this.docId = docId;
@@ -45,7 +53,7 @@ public class WebSocketController {
         System.out.println("docId after connecttowebsock "+docId+" username: "+username);
     }
     private void handleReceivedNode(Node newNode) {
-        System.out.println("Received node: content=" + newNode.getContent() + ", operation=" + newNode.getOperation() + ", id=" + newNode.getId() + ", parentId=" + newNode.getParentId());
+        System.out.println("Received node: content=" + newNode.getContent() + ", operation=" + newNode.getOperation() + ", id=" + newNode.getId() + ", parentId=" + newNode.getParentId() + ", clock=" + getClock());
         if (newNode.getOperation() == 0) {
             System.out.println("Attempting to insert node: " + newNode.getContent());
             this.documentTree.insert(newNode);
