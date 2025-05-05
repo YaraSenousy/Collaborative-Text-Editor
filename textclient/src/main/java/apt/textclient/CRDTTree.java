@@ -34,7 +34,6 @@ public class CRDTTree {
         try {
             // Process the new node
             if (!tryInsert(newNode)) {
-                System.out.println("Parent not found for node " + newNode.getId() + ", adding to orphaned nodes");
                 orphanedNodes.computeIfAbsent(newNode.getParentId(), k -> new ArrayList<>()).add(newNode);
             }
 
@@ -51,11 +50,9 @@ public class CRDTTree {
         Node existingNode = nodeMap.get(newNode.id);
         if (existingNode != null) {
             if (existingNode.isDeleted) {
-                System.out.println("Node exists but is deleted, reviving: " + newNode.getId());
                 existingNode.isDeleted = false;
                 return true;
             } else {
-                System.out.println("Node already exists and not deleted, skipping: " + newNode.getId());
                 return true;
             }
         }
@@ -65,10 +62,8 @@ public class CRDTTree {
             return false; // Parent not found, defer insertion
         }
 
-        System.out.println("Attempting to insert node: content=" + newNode.getContent() + ", id=" + newNode.getId() + ", parentId=" + newNode.getParentId());
         parent.children.add(newNode);
         nodeMap.put(newNode.id, newNode);
-        System.out.println("Inserted node: " + newNode.getContent() + " under parent " + parent.getId());
         return true;
     }
 
@@ -76,10 +71,8 @@ public class CRDTTree {
         List<Node> orphans = orphanedNodes.remove(parentId);
         if (orphans != null) {
             for (Node orphan : orphans) {
-                System.out.println("Processing orphaned node: content=" + orphan.getContent() + ", id=" + orphan.getId() + ", parentId=" + orphan.getParentId());
                 if (!tryInsert(orphan)) {
                     // If the parent still isn't found (unlikely since we check nodeMap), re-add to orphanedNodes
-                    System.out.println("Parent still not found for node " + orphan.getId() + ", re-adding to orphaned nodes");
                     orphanedNodes.computeIfAbsent(orphan.getParentId(), k -> new ArrayList<>()).add(orphan);
                 } else {
                     // Recursively check if this newly inserted node is a parent for other orphans
@@ -88,53 +81,7 @@ public class CRDTTree {
             }
         }
     }
-//public void insert(Node newNode) {
-//    lock.writeLock().lock();
-//    try {
-//        // Process the new node
-//        if (!tryInsert(newNode)) {
-//            System.out.println("Parent not found for node " + newNode.getId() + ", adding to pending queue");
-//            pendingNodes.add(newNode);
-//        }
-//
-//        // Retry inserting pending nodes
-//        Queue<Node> stillPending = new LinkedList<>();
-//        while (!pendingNodes.isEmpty()) {
-//            Node pendingNode = pendingNodes.poll();
-//            if (!tryInsert(pendingNode)) {
-//                stillPending.add(pendingNode);
-//            }
-//        }
-//        pendingNodes.addAll(stillPending);
-//    } finally {
-//        lock.writeLock().unlock();
-//    }
-//}
-//
-//    private boolean tryInsert(Node newNode) {
-//        Node existingNode = nodeMap.get(newNode.id);
-//        if (existingNode != null) {
-//            if (existingNode.isDeleted) {
-//                System.out.println("Node exists but is deleted, reviving: " + newNode.getId());
-//                existingNode.isDeleted = false;
-//                return true;
-//            } else {
-//                System.out.println("Node already exists and not deleted, skipping: " + newNode.getId());
-//                return true;
-//            }
-//        }
-//
-//        Node parent = nodeMap.get(newNode.parentId);
-//        if (parent == null) {
-//            return false; // Parent not found, defer insertion
-//        }
-//
-//        System.out.println("Attempting to insert node: content=" + newNode.getContent() + ", id=" + newNode.getId() + ", parentId=" + newNode.getParentId());
-//        parent.children.add(newNode);
-//        nodeMap.put(newNode.id, newNode);
-//        System.out.println("Inserted node: " + newNode.getContent() + " under parent " + parent.getId());
-//        return true;
-//    }
+
 
 
     public void delete(String nodeId) {
@@ -180,7 +127,6 @@ public class CRDTTree {
                     writer.write(c);
                 }
                 writer.flush();
-                System.out.println("Successfully wrote to file.");
                 return true;
             } catch (IOException e) {
                 System.err.println("Error writing to file: " + e.getMessage());
@@ -204,7 +150,6 @@ public class CRDTTree {
                 // Update parent to the newly inserted node
                 parentId = userId + "-" + (timestamp - 1);
             }
-            System.out.println("Successfully inserted from " + filename);
             return nodes;
         } catch (IOException e) {
             System.err.println("Error reading file: " + e.getMessage());

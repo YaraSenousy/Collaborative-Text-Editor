@@ -64,20 +64,15 @@ public class WebSocketController {
         this.connectedUsers=connectedUsers;
         this.joinCode=joinCode;
         connectToWebSocket(username, docId);
-        System.out.println("docId after connecttowebsock "+docId+" username: "+username);
     }
     private void handleReceivedNode(Node newNode) {
-        System.out.println("Received node: content=" + newNode.getContent() + ", operation=" + newNode.getOperation() + ", id=" + newNode.getId() + ", parentId=" + newNode.getParentId());
         if (newNode.getOperation() == 0) {
-            System.out.println("Attempting to insert node: " + newNode.getContent());
             this.documentTree.insert(newNode);
         } else {
-            System.out.println("Attempting to delete node with id: " + newNode.getId());
             this.documentTree.delete(newNode.getId());
         }
         if (onDocumentChange != null) {
             Platform.runLater(onDocumentChange);
-            System.out.println("Triggered onDocumentChange");
         }
     }
     private void handleReceivedChange(User newuser){
@@ -347,7 +342,6 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
                 boolean accessType = response.isWritePermission();
                 Node[] importedNodes = response.getDocumentNodes();
                 for (Node n : importedNodes) {
-                    System.out.println(n.content);
                     if (n.getOperation() == 0) {
                         this.getDocumentTree().insert(n);
                     }
