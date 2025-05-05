@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.security.SecureRandom;
 
+import static java.awt.Color.BLUE;
+
 
 @Service
 public class DocumentService {
@@ -33,7 +35,7 @@ public class DocumentService {
     public CreateResponse createDocument(ArrayList<Node> importFile,String ownerName) {
         Document doc = new Document();
         User user= new User(ownerName,0,true);
-        user.setColor(generateColor());
+        //user.setColor(generateColor());
         //client will create the cursor rect
         doc.getConnectedUsers().put(ownerName,user);
         if (importFile != null && !importFile.isEmpty()) {
@@ -67,7 +69,7 @@ public class DocumentService {
                 response.setComments(doc.getComments());
                 if(!doc.getConnectedUsers().containsKey(user)) {
                     User newuser=new User(user,0,true);
-                    newuser.setColor(generateColor());
+                    //newuser.setColor(generateColor());
                     doc.getConnectedUsers().put(user, newuser);
                     response.setConnectedUsers(doc.getConnectedUsers());
                 } else {
@@ -82,7 +84,7 @@ public class DocumentService {
                 response.setComments(doc.getComments());
                 if(!doc.getConnectedUsers().containsKey(user)) {
                     User newuser=new User(user,0,true);
-                    newuser.setColor(generateColor());
+                    //newuser.setColor(generateColor());
                     doc.getConnectedUsers().put(user, newuser);
                     response.setConnectedUsers(doc.getConnectedUsers());
                 } else {
@@ -105,16 +107,13 @@ public class DocumentService {
                     existingUser.setCursorPosition(change.getCursorPosition());
                     //existingUser.setIsConnected(change.isConnected());
                     existingUser.setConnected(change.isConnected());
-                    if (existingUser.getColor() == null) {
-                        existingUser.setColor(generateColor()); // Assign new color if null
+                    if (existingUser.getColor() == null && change.getColor() != null) {
+                        existingUser.setColor(change.getColor()); // Assign new color if null
                         System.out.println("Assigned new color for existing user " + change.getUserName() + ": " + existingUser.getColor());
                     }
                     doc.getConnectedUsers().put(change.getUserName(), existingUser);
                 } else {
-                    if (change.getColor() == null) {
-                        change.setColor(generateColor());
-                        System.out.println("Assigned new color for new user " + change.getUserName() + ": " + change.getColor());
-                    }
+
                     doc.getConnectedUsers().put(change.getUserName(), change);
                 }
             } else {
@@ -125,6 +124,21 @@ public class DocumentService {
             System.out.println("Document not found: " + docId);
         }
     }
+
+
+//    private String generateColor() {
+//        Random random = new Random();
+//        float hue = random.nextInt(360);
+//        float saturation = 0.4f + random.nextFloat() * 0.2f;
+//        float brightness = 0.3f + random.nextFloat() * 0.3f;
+//
+//        Color fxColor = Color.hsb(hue, saturation, brightness);
+//        return String.format("#%02X%02X%02X",
+//                (int)(fxColor.getRed() * 255),
+//                (int)(fxColor.getGreen() * 255),
+//                (int)(fxColor.getBlue() * 255)
+//        );
+//    }
 
     private String generateColor() {
         Random random = new Random();
@@ -152,4 +166,5 @@ public class DocumentService {
             System.out.println("Document not found: " + docId);
         }
     }
+
 }
