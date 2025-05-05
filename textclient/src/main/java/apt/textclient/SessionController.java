@@ -52,6 +52,7 @@ public class SessionController {
     @FXML
 
     private Button addCommentButton;
+    @FXML
     private Pane cursorOverlay;
 
 
@@ -100,6 +101,7 @@ public class SessionController {
         undoButton.setDisable(!accessPermission);
         redoButton.setDisable(!accessPermission);
         exportButton.setDisable(!accessPermission);
+        addCommentButton.setDisable(!accessPermission);
 
         setButtonIcons();
         updateTextArea();
@@ -190,19 +192,20 @@ public class SessionController {
 
     }
     private void setButtonIcons() {
-        // Load images from resources (adjust paths based on your project structure)
+
         Image copyImage = new Image(getClass().getResourceAsStream("/icons/copy.png"));
         Image undoImage = new Image(getClass().getResourceAsStream("/icons/undo.png"));
         Image redoImage = new Image(getClass().getResourceAsStream("/icons/redo.png"));
         Image exportImage = new Image(getClass().getResourceAsStream("/icons/export.png"));
+        Image commentsImage = new Image(getClass().getResourceAsStream("/icons/comments.png"));
 
-        // Create ImageView instances and set them as button graphics
+
         ImageView copyIcon = new ImageView(copyImage);
         copyIcon.setFitWidth(16); // Adjust size as needed
         copyIcon.setFitHeight(16);
         copyWriterCodeButton.setGraphic(copyIcon);
 
-        ImageView copyReaderIcon = new ImageView(copyImage); // Reuse copy icon for reader
+        ImageView copyReaderIcon = new ImageView(copyImage);
         copyReaderIcon.setFitWidth(16);
         copyReaderIcon.setFitHeight(16);
         copyReaderCodeButton.setGraphic(copyReaderIcon);
@@ -221,6 +224,11 @@ public class SessionController {
         exportIcon.setFitWidth(16);
         exportIcon.setFitHeight(16);
         exportButton.setGraphic(exportIcon);
+
+        ImageView commentsIcon = new ImageView(commentsImage);
+        commentsIcon.setFitWidth(16);
+        commentsIcon.setFitHeight(16);
+        addCommentButton.setGraphic(commentsIcon);
     }
     private void setupTextAreaListener() {
         textArea.textProperty().addListener((obs, oldValue, newValue) -> {

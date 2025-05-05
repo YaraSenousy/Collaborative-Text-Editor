@@ -34,17 +34,17 @@
             </HBox>
             <HBox fx:id="writerCodeBox" spacing="5" alignment="CENTER_LEFT">
                 <Label fx:id="writerCodeLabel" style="-fx-font-weight: bold;"/>
-                <Button fx:id="copyWriterCodeButton" text="" onAction="#copyWriterCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
+                <Button fx:id="copyWriterCodeButton" text="Copy" onAction="#copyWriterCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px; -fx-font-weight: bold;"/>
             </HBox>
             <HBox fx:id="readerCodeBox" spacing="5" alignment="CENTER_LEFT">
                 <Label fx:id="readerCodeLabel" style="-fx-font-weight: bold;"/>
-                <Button fx:id="copyReaderCodeButton" text="" onAction="#copyReaderCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
+                <Button fx:id="copyReaderCodeButton" text="Copy" onAction="#copyReaderCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px; -fx-font-weight: bold;"/>
             </HBox>
-            <Button fx:id="addCommentButton" text="Add Comment" onAction="#addComment" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
+            <Button fx:id="addCommentButton" text="Add Comment" onAction="#addComment" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-weight: bold; -fx-font-size: 12px;"/>
             <VBox>
-                <Label text="Users" />
+                <Label text="Users" style="-fx-text-fill: black; -fx-font-weight: bold; -fx-font-size: 12px;" />
                 <ListView fx:id="userListView" />
-                <Label text="Comments" />
+                <Label text="Comments" style="-fx-text-fill: black; -fx-font-weight: bold; -fx-font-size: 12px;"/>
                 <ListView fx:id="commentsListView" />
             </VBox>
         </VBox>
