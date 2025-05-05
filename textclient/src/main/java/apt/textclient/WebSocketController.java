@@ -208,7 +208,6 @@ public class WebSocketController {
 
     public void sendChange(Node newChange) {
         if (stompSession != null && stompSession.isConnected() || !isConnected) {
-            System.out.println("sending..");
             try{
             stompSession.send("/app/document/" + docId, newChange);
             }catch(Exception e){
@@ -245,7 +244,6 @@ public class WebSocketController {
     }
 
     public void handleDisconnect(String username, String docId) {
-        System.out.println("handling disconnection please wait man cmon");
         synchronized (this) {
             if (!isConnected) return; // Already handling disconnection
             isConnected = false;
@@ -274,7 +272,6 @@ public class WebSocketController {
                 });
                 return;
             }
-            System.out.println("Attempting to reconnect...");
             try {
                 connectToWebSocket(username, docId);
             } catch (Exception e) {
