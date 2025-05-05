@@ -43,7 +43,7 @@ public class SignUpController {
     private WebSocketController wsController;
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String SERVER_URL = "http://localhost:8080";
+    private static final String SERVER_URL = "http://172.20.10.21:8080";
     private static final RestTemplate restTemplate = new RestTemplate();
     public void initialize() {
         wsController = new WebSocketController();

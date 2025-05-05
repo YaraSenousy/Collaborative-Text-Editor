@@ -34,7 +34,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 @Getter
 @Setter
 public class WebSocketController {
-    private String SERVER_URL="localhost";
+    private String SERVER_URL="172.20.10.21";
     private String joinCode;
     private StompSession stompSession;
     private String username;
@@ -45,7 +45,7 @@ public class WebSocketController {
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
 
-    private boolean isConnected = false;
+    private boolean isConnected = true;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final List<Node> offlineOperations = Collections.synchronizedList(new ArrayList<>());
     private long disconnectTime = 0;
@@ -213,12 +213,15 @@ public class WebSocketController {
     public void sendChange(Node newChange) {
         if (stompSession != null && stompSession.isConnected()) {
             System.out.println("sending..");
+            try{
             stompSession.send("/app/document/" + docId, newChange);
+            }catch(Exception e){
+                synchronized (offlineOperations) {
+                    offlineOperations.add(newChange);
+                }
+            }
         } else {
             System.err.println("STOMP session not connected");
-            synchronized (offlineOperations) {
-                offlineOperations.add(newChange);
-            }
             }
         }
 
@@ -242,6 +245,7 @@ public class WebSocketController {
     }
 
     public void handleDisconnect(String username, String docId) {
+        System.out.println("handling disconnection please wait man cmon");
         synchronized (this) {
             if (!isConnected) return; // Already handling disconnection
             isConnected = false;
@@ -293,7 +297,7 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
         System.out.println("Connected to WebSocket server!");
         // Handle reconnection
         synchronized (controller.offlineOperations) {
-            if (!controller.offlineOperations.isEmpty()) {
+            if (!controller.offlineOperations.isEmpty() && isConnected) {
                 for (Node op : controller.offlineOperations) {
                     session.send("/app/document/" + docId, op);
                     System.out.println("Sent queued operation: " + op);
