@@ -123,7 +123,7 @@ public class WebSocketController {
                         public void onSuccess(StompSession session) {
                             isConnected = true;
                             stompSession = session;
-                            if(!scheduler.isShutdown()){scheduler.shutdown();}
+                            //if(!scheduler.isShutdown()){scheduler.shutdown();}
                             System.out.println("Successfully connected");
                             // Subscribe to the chat room
                             String topic = "/topic/document/" + docId;
