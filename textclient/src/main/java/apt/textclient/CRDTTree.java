@@ -117,6 +117,28 @@ public class CRDTTree {
             traverseDFS(child, result);
         }
     }
+    public List<Node> traverseNodes() {
+        lock.readLock().lock();
+        try {
+            List<Node> result = new ArrayList<>();
+            traverseDFSNodes(root, result);
+            return result;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private void traverseDFSNodes(Node node, List<Node> result) {
+        if (node == null) return;
+        for (Node child : node.children) {
+            if (!child.isDeleted)
+            {
+                result.add(child);
+            }
+            traverseDFSNodes(child, result);
+        }
+    }
+
 
     public boolean export(String filename){
         List<Character> list = this.traverse();

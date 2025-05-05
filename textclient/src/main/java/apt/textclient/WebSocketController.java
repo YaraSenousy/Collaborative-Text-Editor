@@ -297,13 +297,15 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
         System.out.println("Connected to WebSocket server!");
         // Handle reconnection
         synchronized (controller.offlineOperations) {
-            if (!controller.offlineOperations.isEmpty()) {
-                for (Node op : controller.offlineOperations) {
+
+            List<Node> nodes =  documentTree.traverseNodes();
+
+                for (Node op : nodes) {
                     session.send("/app/document/" + docId, op);
                     System.out.println("Sent queued operation: " + op);
                 }
                 controller.offlineOperations.clear();
-            }
+
         }
         controller.requestChanges();
     }
