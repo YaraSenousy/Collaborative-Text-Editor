@@ -9,13 +9,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.simp.stomp.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
@@ -28,6 +35,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 @Setter
 public class WebSocketController {
     private String SERVER_URL="localhost";
+    private String joinCode;
     private StompSession stompSession;
     private String username;
     private String docId;
@@ -36,14 +44,25 @@ public class WebSocketController {
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
+
+    private boolean isConnected = false;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final List<Node> offlineOperations = Collections.synchronizedList(new ArrayList<>());
+    private long disconnectTime = 0;
+    private static final long RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+    private static final long RECONNECT_INTERVAL_MS = 5000; // Retry every 5 seconds
+
+    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers,String joinCode,ConcurrentHashMap<String,Comment> comments) {
+
     private Runnable onCommentChange;
     private ConcurrentHashMap<String,Comment> comments;
 
-    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers,ConcurrentHashMap<String,Comment> comments) {
+
         this.username = username;
         this.comments = comments;
         this.docId = docId;
         this.connectedUsers=connectedUsers;
+        this.joinCode=joinCode;
         connectToWebSocket(username, docId);
         System.out.println("docId after connecttowebsock "+docId+" username: "+username);
     }
@@ -100,13 +119,14 @@ public class WebSocketController {
             stompClient.setMessageConverter(new CompositeMessageConverter(converters));
 
             String url = "ws://"+SERVER_URL+":8080/ws";
-            StompSessionHandler sessionHandler = new MyStompSessionHandler();
+            StompSessionHandler sessionHandler = new MyStompSessionHandler(this,username,docId);
 
             // Add connection callback
             stompClient.connect(url, sessionHandler)
                     .addCallback(new ListenableFutureCallback<StompSession>() {
                         @Override
                         public void onSuccess(StompSession session) {
+                            isConnected = true;
                             stompSession = session;
                             System.out.println("Successfully connected");
                             // Subscribe to the chat room
@@ -196,8 +216,12 @@ public class WebSocketController {
             stompSession.send("/app/document/" + docId, newChange);
         } else {
             System.err.println("STOMP session not connected");
+            synchronized (offlineOperations) {
+                offlineOperations.add(newChange);
+            }
+            }
         }
-    }
+
     public void sendUserChange(User newChange){
         if (stompSession != null && stompSession.isConnected()) {
             stompSession.send("/app/change/" + docId, newChange);
@@ -216,15 +240,118 @@ public class WebSocketController {
     public long getClock() {
         return System.nanoTime();
     }
+
+    public void handleDisconnect(String username, String docId) {
+        synchronized (this) {
+            if (!isConnected) return; // Already handling disconnection
+            isConnected = false;
+            disconnectTime = System.currentTimeMillis();
+            System.out.println("Disconnected, starting reconnection attempts...");
+            scheduler.scheduleAtFixedRate(() -> attemptReconnect(), 0, RECONNECT_INTERVAL_MS, TimeUnit.MILLISECONDS);
+            Platform.runLater(() -> {
+                if (onDocumentChange != null) {
+                    onDocumentChange.run(); // Update UI to show disconnection
+                }
+            });
+        }
+    }
+    private void attemptReconnect() {
+        synchronized (this) {
+            if (isConnected) return;
+            if (System.currentTimeMillis() - disconnectTime > RECONNECT_WINDOW_MS) {
+                System.err.println("Reconnect window expired");
+                scheduler.shutdown();
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Session Expired");
+                    alert.setHeaderText("Reconnection Failed");
+                    alert.setContentText("Session expired after 5 minutes. Please reconnect manually.");
+                    alert.showAndWait();
+                });
+                return;
+            }
+            System.out.println("Attempting to reconnect...");
+            try {
+                connectToWebSocket(username, docId);
+            } catch (Exception e) {
+                System.err.println("Reconnect failed: " + e.getMessage());
+            }
+        }
 }
 class MyStompSessionHandler extends StompSessionHandlerAdapter {
+    private final WebSocketController controller;
+    private final String username;
+    private final String docId;
+
+    public MyStompSessionHandler(WebSocketController controller, String username, String docId) {
+        this.controller = controller;
+        this.username = username;
+        this.docId = docId;
+    }
     @Override
     public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
         System.out.println("Connected to WebSocket server!");
+        // Handle reconnection
+        synchronized (controller.offlineOperations) {
+            if (!controller.offlineOperations.isEmpty()) {
+                for (Node op : controller.offlineOperations) {
+                    session.send("/app/document/" + docId, op);
+                    System.out.println("Sent queued operation: " + op);
+                }
+                controller.offlineOperations.clear();
+            }
+        }
+        controller.requestChanges();
     }
 
     @Override
     public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
         System.err.println("An error occurred: " + exception.getMessage());
+    }
+    @Override
+    public void handleTransportError(StompSession session, Throwable exception) {
+        System.err.println("Transport error: " + exception.getMessage());
+        controller.handleDisconnect(username,docId);
+    }
+}
+
+    private void requestChanges() {
+            // Send HTTP request to join session
+//                HttpRequest request = HttpRequest.newBuilder()
+//                        .uri(URI.create(SERVER_URL + "/grantAccess"))
+//                        .header("Content-Type", "application/json")
+//                        .POST(HttpRequest.BodyPublishers.ofString("{\"password\":\"" + code + "\"}"))
+//                        .build();
+//                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+//                AccessResponse accessResponse = objectMapper.readValue(response.body(), AccessResponse.class);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            RestTemplate restTemplate = new RestTemplate();
+            MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+            converter.setObjectMapper(JacksonConfig.getObjectMapper());
+            restTemplate.getMessageConverters()
+                    .removeIf(m -> m instanceof MappingJackson2HttpMessageConverter); // Remove default Jackson converter
+            restTemplate.getMessageConverters().add(converter);
+            ArrayList<String> requestData=new ArrayList<String>();
+            requestData.add(joinCode);
+            ObjectMapper mapper = new ObjectMapper();
+
+
+            AccessResponse response=restTemplate.postForObject(SERVER_URL + "/grantAccess/"+username , requestData, AccessResponse.class);
+                String docId = response.getDocId();
+                boolean accessType = response.isWritePermission();
+                Node[] importedNodes = response.getDocumentNodes();
+                for (Node n : importedNodes) {
+                    System.out.println(n.content);
+                    if (n.getOperation() == 0) {
+                        this.getDocumentTree().insert(n);
+                    }
+                    else{
+                        this.getDocumentTree().delete(n.getId());
+                    }
+                }
+                this.initializeData(username, docId, response.getConnectedUsers(),joinCode);
+                //switchToSessionPage(username, "", "", accessType);
     }
 }
