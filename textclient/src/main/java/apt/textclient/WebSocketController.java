@@ -123,6 +123,7 @@ public class WebSocketController {
                         public void onSuccess(StompSession session) {
                             isConnected = true;
                             stompSession = session;
+                            if(!scheduler.isShutdown()){scheduler.shutdown();}
                             System.out.println("Successfully connected");
                             // Subscribe to the chat room
                             String topic = "/topic/document/" + docId;
@@ -206,7 +207,7 @@ public class WebSocketController {
     }
 
     public void sendChange(Node newChange) {
-        if (stompSession != null && stompSession.isConnected()) {
+        if (stompSession != null && stompSession.isConnected() || !isConnected) {
             System.out.println("sending..");
             try{
             stompSession.send("/app/document/" + docId, newChange);
@@ -217,6 +218,10 @@ public class WebSocketController {
             }
         } else {
             System.err.println("STOMP session not connected");
+            System.out.println("storing offline changes");
+            synchronized (offlineOperations) {
+                offlineOperations.add(newChange);
+            }
             }
         }
 
@@ -292,7 +297,7 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
         System.out.println("Connected to WebSocket server!");
         // Handle reconnection
         synchronized (controller.offlineOperations) {
-            if (!controller.offlineOperations.isEmpty() && isConnected) {
+            if (!controller.offlineOperations.isEmpty()) {
                 for (Node op : controller.offlineOperations) {
                     session.send("/app/document/" + docId, op);
                     System.out.println("Sent queued operation: " + op);
