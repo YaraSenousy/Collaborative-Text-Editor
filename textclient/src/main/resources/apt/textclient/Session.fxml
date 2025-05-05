@@ -9,12 +9,17 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Button?>
 
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.Pane?>
 <BorderPane style="-fx-background-color: #ffffff;" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="apt.textclient.SessionController">
     <padding>
         <Insets top="10" right="10" bottom="10" left="10"/>
     </padding>
     <center>
-        <TextArea fx:id="textArea" wrapText="true" style="-fx-font-size: 14px;"/>
+        <StackPane>
+            <TextArea fx:id="textArea" wrapText="true" style="-fx-font-size: 14px; -fx-font-family: 'Consolas';"/>
+            <Pane fx:id="cursorOverlay" mouseTransparent="true"/>
+        </StackPane>
     </center>
     <right>
         <VBox fx:id="sidebar" spacing="10" prefWidth="200" style="-fx-background-color: #f0f0f0; -fx-border-color: #cccccc; -fx-border-width: 1px;">
@@ -29,14 +34,19 @@
             </HBox>
             <HBox fx:id="writerCodeBox" spacing="5" alignment="CENTER_LEFT">
                 <Label fx:id="writerCodeLabel" style="-fx-font-weight: bold;"/>
-                <Button fx:id="copyWriterCodeButton" text="" onAction="#copyWriterCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
+                <Button fx:id="copyWriterCodeButton" text="Copy" onAction="#copyWriterCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px; -fx-font-weight: bold;"/>
             </HBox>
             <HBox fx:id="readerCodeBox" spacing="5" alignment="CENTER_LEFT">
                 <Label fx:id="readerCodeLabel" style="-fx-font-weight: bold;"/>
-                <Button fx:id="copyReaderCodeButton" text="" onAction="#copyReaderCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
+                <Button fx:id="copyReaderCodeButton" text="Copy" onAction="#copyReaderCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px; -fx-font-weight: bold;"/>
             </HBox>
-            <Label text="Active Users" style="-fx-font-weight: bold;"/>
-            <ListView fx:id="userListView"/>
+            <Button fx:id="addCommentButton" text="Add Comment" onAction="#addComment" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-weight: bold; -fx-font-size: 12px;"/>
+            <VBox>
+                <Label text="Users" style="-fx-text-fill: black; -fx-font-weight: bold; -fx-font-size: 12px;" />
+                <ListView fx:id="userListView" />
+                <Label text="Comments" style="-fx-text-fill: black; -fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <ListView fx:id="commentsListView" />
+            </VBox>
         </VBox>
     </right>
 </BorderPane>

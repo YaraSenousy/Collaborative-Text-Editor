@@ -99,7 +99,8 @@ public class SignUpController {
                 System.out.println(response.getReadPassword());
                 ConcurrentHashMap<String,User> userMap=new ConcurrentHashMap<>();
                 userMap.put(username,response.getOwner());
-                wsController.initializeData(username,docId,userMap,response.getWritePassword());
+
+                wsController.initializeData(username,docId,userMap,response.getWritePassword(),new ConcurrentHashMap<>());
                 switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
             } catch (Exception e) {
                 showAlert("Error", e.getMessage());
@@ -165,7 +166,9 @@ public class SignUpController {
                     System.out.println(response.getReadPassword());
                     ConcurrentHashMap<String,User> userMap=new ConcurrentHashMap<>();
                     userMap.put(username,response.getOwner());
-                    wsController.initializeData(username,docId,userMap, response.getWritePassword());
+
+                    wsController.initializeData(username,docId,userMap, response.getWritePassword(),new ConcurrentHashMap<>());
+
                     //nodes.forEach(wsController::sendChange);
                     switchToSessionPage(username, response.getWritePassword(),response.getReadPassword(), true);
                 } catch (Exception e) {
@@ -236,7 +239,9 @@ public class SignUpController {
                         wsController.getDocumentTree().delete(n.getId());
                     }
                     }
-                    wsController.initializeData(username, docId, response.getConnectedUsers(),code);
+
+                    wsController.initializeData(username, docId, response.getConnectedUsers(),code,response.getComments());
+
                     switchToSessionPage(username, "", "", accessType);
                 }else {
                     showAlert("Error", "This username already exists, please choose another.");

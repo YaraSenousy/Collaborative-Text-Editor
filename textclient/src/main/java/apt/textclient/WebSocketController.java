@@ -40,10 +40,11 @@ public class WebSocketController {
     private String username;
     private String docId;
     private CRDTTree documentTree = new CRDTTree();
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper = JacksonConfig.getObjectMapper();
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
+
     private boolean isConnected = false;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final List<Node> offlineOperations = Collections.synchronizedList(new ArrayList<>());
@@ -51,8 +52,14 @@ public class WebSocketController {
     private static final long RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
     private static final long RECONNECT_INTERVAL_MS = 5000; // Retry every 5 seconds
 
-    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers,String joinCode) {
+    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers,String joinCode,ConcurrentHashMap<String,Comment> comments) {
+
+    private Runnable onCommentChange;
+    private ConcurrentHashMap<String,Comment> comments;
+
+
         this.username = username;
+        this.comments = comments;
         this.docId = docId;
         this.connectedUsers=connectedUsers;
         this.joinCode=joinCode;
@@ -83,6 +90,17 @@ public class WebSocketController {
             Platform.runLater(onUsersChange);
         }
     }
+    private void handleComment(Comment newComment){
+        if(newComment.getOperation() == 0) {
+           comments.put(newComment.getId(),newComment);
+        }else{
+            comments.remove(newComment.getId());
+        }
+        if (onCommentChange != null) {
+            Platform.runLater(onCommentChange);
+        }
+    }
+
     public void sendDisconnected() {
         // Send disconnection message
         User disconnectMessage = new User(username, 0, false);
@@ -149,6 +167,25 @@ public class WebSocketController {
 
                                 }
                             });
+                            // Subscribe to the comments
+                            topic = "/topic/comment/" + docId;
+                            stompSession.subscribe(topic, new StompFrameHandler() {
+
+                                @Override
+                                public Type getPayloadType(StompHeaders headers) {
+                                    return Comment.class; // Expected payload type
+                                }
+                                @Override
+                                public void handleFrame(StompHeaders headers, Object payload) {
+                                    try{
+                                        Comment comment = (Comment) payload;
+                                        handleComment(comment);}
+                                    catch(Exception e){
+                                        System.err.println(e.getMessage());
+                                    }
+
+                                }
+                            });
                             sendUserChange(new User(username, 0,true));
                         }
                         @Override
@@ -188,6 +225,13 @@ public class WebSocketController {
     public void sendUserChange(User newChange){
         if (stompSession != null && stompSession.isConnected()) {
             stompSession.send("/app/change/" + docId, newChange);
+        } else {
+            System.err.println("STOMP session not connected");
+        }
+    }
+    public void sendComment(Comment comment) {
+        if (stompSession != null && stompSession.isConnected()) {
+            stompSession.send("/app/comment/" + docId, comment);
         } else {
             System.err.println("STOMP session not connected");
         }

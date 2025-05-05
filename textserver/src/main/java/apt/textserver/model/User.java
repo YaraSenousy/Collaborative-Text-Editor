@@ -7,8 +7,7 @@ import lombok.Setter;
 
 import java.awt.*;
 
-@Getter
-@Setter
+@Getter @Setter
 public class User {
     String userName;
     int cursorPosition;
