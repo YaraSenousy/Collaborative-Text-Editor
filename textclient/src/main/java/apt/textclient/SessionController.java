@@ -4,10 +4,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.*;
@@ -23,8 +20,7 @@ import javafx.util.Duration;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static java.awt.SystemColor.text;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class SessionController {
@@ -70,6 +66,7 @@ public class SessionController {
     private Map<String, Rectangle> cursor = new HashMap<>();
     private Timeline cursorBlinkTimeline;
 
+
     // Predefined array of 40 distinct color names
     private static final String[] COLOR_PALETTE = {
             "red", "blue", "green", "yellow", "purple", "orange", "pink", "brown", "gray", "cyan",
@@ -84,6 +81,7 @@ public class SessionController {
         this.writerCode = writerCode;
         this.readerCode = readerCode;
         this.accessPermission = accessPermission;
+
         System.out.println("access: "+accessPermission);
         if (!Objects.equals(writerCode, "")) {
             writerCodeBox.setVisible(true);
@@ -106,6 +104,31 @@ public class SessionController {
         undoButton.setDisable(!accessPermission);
         redoButton.setDisable(!accessPermission);
         exportButton.setDisable(!accessPermission);
+
+        userListView.setCellFactory(listView -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String username, boolean empty) {
+                super.updateItem(username, empty);
+                if (empty || username == null) {
+                    setText(null);
+                    setStyle(""); // Reset style
+                } else {
+                    setText(username);
+                    String color = wsController.getConnectedUsers().get(username).getColor();
+                    if (color != null) {
+                        try {
+                            // Apply the color to the text
+                            setStyle("-fx-text-fill: " + color + ";");
+                        } catch (Exception e) {
+                            System.err.println("Failed to apply color " + color + " to username " + username);
+                            setStyle("-fx-text-fill: black;"); // Fallback to black
+                        }
+                    } else {
+                        setStyle("-fx-text-fill: black;"); // Default color if not assigned
+                    }
+                }
+            }
+        });
 
         setButtonIcons();
         updateTextArea();
@@ -180,16 +203,16 @@ public class SessionController {
             //int caretPos = textArea.getCaretPosition();
             //int cursorPosition = textArea.getText(0, caretPos).replaceAll("[^\n]", "").length() + 1;
             User change=new User(username, cursorPosition,true);
-            User existingUser = wsController.getConnectedUsers().get(username);
-            if(existingUser!=null && existingUser.getColor()!=null){
-             change.setColor(existingUser.color);
-            }else{
-                String assignedColor = assignColorFromPalette(username);
-                change.setColor(assignedColor);
-                if (existingUser != null) {
-                    existingUser.setColor(assignedColor);
-                }
-            }
+//            User existingUser = wsController.getConnectedUsers().get(username);
+//            if(existingUser!=null && existingUser.getColor()!=null){
+//             change.setColor(existingUser.color);
+//            }else{
+//                String assignedColor = assignColorFromPalette(username);
+//                change.setColor(assignedColor);
+//                if (existingUser != null) {
+//                    existingUser.setColor(assignedColor);
+//                }
+//            }
             //change.setColor(wsController.getConnectedUsers().get(username).getColor());
             //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
             wsController.sendUserChange(change);
@@ -409,6 +432,12 @@ public class SessionController {
 
         // Process each user
         ArrayList<User> users = new ArrayList<>(connectedUsers.values());
+        final int[] colorIndex = {0};
+        for (User user : users) {
+            String username = user.getUserName();
+            if (username == null || username.trim().isEmpty()) continue;
+        }
+        int colorNumber = 0;
         for (User user : users) {
             String username = user.getUserName();
             int pos = Math.min(user.getCursorPosition(), textArea.getText().length());
@@ -431,27 +460,38 @@ public class SessionController {
             });
 
             // Set cursor color
-            String color = user.getColor();
-            if (color == null || color.trim().isEmpty()) {
-                System.out.println("No color for " + username + ", assigning from palette.");
-                color = assignColorFromPalette(username);
-                user.setColor(color); // Update the User object
-                // Notify other clients of the updated user color
-                User updatedUser = new User(username, pos, true);
-                updatedUser.setColor(color);
-                wsController.sendUserChange(updatedUser);
-            }
+//            String color = user.getColor();
+//            if (color == null || color.trim().isEmpty()) {
+//                System.out.println("No color for " + username + ", assigning from palette.");
+//                color = assignColorFromPalette(username);
+//                user.setColor(color); // Update the User object
+//                // Notify other clients of the updated user color
+//                User updatedUser = new User(username, pos, true);
+//                updatedUser.setColor(color);
+//                wsController.sendUserChange(updatedUser);
+//            }
+//            try {
+//                if (color == null || color.trim().isEmpty()) {
+//                    rect.setFill(Color.web(color));
+//                    System.out.println("Set cursor color for " + username + " to " + color);
+//                } else {
+//                    rect.setFill(Color.web(color));
+//                }
+//            } catch (Exception e) {
+//                System.err.println("Invalid color for " + username + ": " + color + ", using default.");
+//                rect.setFill(Color.BLACK);
+//            }
+            // Assign a random color from the palette
+            String randomColor = COLOR_PALETTE[colorNumber];
+            colorNumber++;
             try {
-                if (color == null || color.trim().isEmpty()) {
-                    rect.setFill(Color.web(color));
-                    System.out.println("Set cursor color for " + username + " to " + color);
-                } else {
-                    rect.setFill(Color.web(color));
-                }
+                rect.setFill(Color.web(randomColor));
+                System.out.println("Set cursor color for " + username + " to " + randomColor);
             } catch (Exception e) {
-                System.err.println("Invalid color for " + username + ": " + color + ", using default.");
+                System.err.println("Invalid color for " + username + ": " + randomColor + ", using default.");
                 rect.setFill(Color.BLACK);
             }
+            user.setColor(randomColor);
 
             // Calculate cursor position
             String text = textArea.getText();
@@ -702,6 +742,7 @@ private String assignColorFromPalette(String username) {
     int colorIndex = hash % COLOR_PALETTE.length;
     return COLOR_PALETTE[colorIndex];
 }
+
 
 
 }
