@@ -51,11 +51,11 @@ public class WebSocketController {
     private long disconnectTime = 0;
     private static final long RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
     private static final long RECONNECT_INTERVAL_MS = 5000; // Retry every 5 seconds
+    private Runnable onCommentChange;
+    private ConcurrentHashMap<String,Comment> comments;
 
     public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers,String joinCode,ConcurrentHashMap<String,Comment> comments) {
 
-    private Runnable onCommentChange;
-    private ConcurrentHashMap<String,Comment> comments;
 
 
         this.username = username;
@@ -351,7 +351,7 @@ class MyStompSessionHandler extends StompSessionHandlerAdapter {
                         this.getDocumentTree().delete(n.getId());
                     }
                 }
-                this.initializeData(username, docId, response.getConnectedUsers(),joinCode);
+                this.initializeData(username, docId, response.getConnectedUsers(),joinCode,response.getComments());
                 //switchToSessionPage(username, "", "", accessType);
     }
 }
