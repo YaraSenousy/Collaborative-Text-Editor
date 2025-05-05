@@ -1,36 +1,27 @@
 package apt.textclient;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-
-import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseEvent;
-import javafx.application.Application;
-import javafx.stage.Stage;
-import javafx.stage.Window;
-import javafx.stage.WindowEvent;
-import javafx.event.EventHandler;
-
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-
+import javafx.scene.input.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
+import javafx.stage.Window;
+import javafx.util.Duration;
 
 import java.io.File;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import java.util.*;
+import static java.awt.SystemColor.text;
 
 
 public class SessionController {
@@ -59,7 +50,10 @@ public class SessionController {
     @FXML
     private Button redoButton;
     @FXML
+
     private Button addCommentButton;
+    private Pane cursorOverlay;
+
 
     private WebSocketController wsController;
     private String username;
@@ -75,7 +69,8 @@ public class SessionController {
     private Stack<Node> redoStack = new Stack<>();
     private boolean isProcessingChanges = false;
     private int expectedCaretPosition = 0;
-
+    private Map<String, Rectangle> cursor = new HashMap<>();
+    private Timeline cursorBlinkTimeline;
 
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
@@ -94,9 +89,10 @@ public class SessionController {
             readerCodeBox.setVisible(false);
             writerCodeBox.setManaged(true);
         }
-        if(accessPermission){
-            textArea.setEditable(true);
-        } else {textArea.setEditable(false);}
+        textArea.setEditable(accessPermission);
+        textArea.setFont(new Font("Consolas", 14));
+        System.out.println("TextArea font: " + textArea.getFont().getFamily() + ", size: " + textArea.getFont().getSize()); //figuring out cursor
+        //System.out.println("CharWidth: " + getCharWidth() + ", LineHeight: " + getLineHeight());
         //wsController.sendUserChange(new User(username, 1));
         listConnectedUsers();
 
@@ -132,6 +128,19 @@ public class SessionController {
             });
         });
 
+        cursorBlinkTimeline = new Timeline(
+                new KeyFrame(Duration.millis(500), event -> {
+                    cursor.values().forEach(rect -> rect.setVisible(!rect.isVisible()));
+                })
+        );
+        cursorBlinkTimeline.setCycleCount(Timeline.INDEFINITE);
+        cursorBlinkTimeline.play();
+
+        Timeline cursorRefreshTimeline = new Timeline(
+                new KeyFrame(Duration.millis(50), event -> listConnectedUsers())
+        );
+        cursorRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        cursorRefreshTimeline.play();
 
     }
 
@@ -165,9 +174,14 @@ public class SessionController {
         long now = System.currentTimeMillis();
         if (now - lastCursorUpdate >= CURSOR_UPDATE_INTERVAL) {
             int cursorPosition = textArea.getCaretPosition();
+            System.out.println("Sending cursor position for " + username + ": " + cursorPosition + ", text: " + textArea.getText());
             //int caretPos = textArea.getCaretPosition();
             //int cursorPosition = textArea.getText(0, caretPos).replaceAll("[^\n]", "").length() + 1;
             User change=new User(username, cursorPosition,true);
+            User existingUser = wsController.getConnectedUsers().get(username);
+            if(existingUser!=null && existingUser.getColor()!=null){
+             change.setColor(existingUser.color);
+            }
             //change.setColor(wsController.getConnectedUsers().get(username).getColor());
             //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
             wsController.sendUserChange(change);
@@ -266,6 +280,7 @@ public class SessionController {
                         }
                         expectedCaretPosition = changeIndex;
                     }
+                    sendThrottledCursorUpdate();
                 }
             } finally {
                 isProcessingChanges = false;
@@ -359,29 +374,103 @@ public class SessionController {
         content.putString(readerCode);
         clipboard.setContent(content);
     }
-    private void listConnectedUsers(){
+    private void listConnectedUsers() {
         if (userListView == null || wsController == null) {
             System.err.println("Error: userListView or wsController is null, cannot update user list.");
             return;
         }
 
         userListView.getItems().clear();
-        ConcurrentHashMap<String,User> connectedUsers=wsController.getConnectedUsers();
+        cursorOverlay.getChildren().clear();
+
+        ConcurrentHashMap<String, User> connectedUsers = wsController.getConnectedUsers();
         // Get connected users from document
         if (connectedUsers == null) {
             System.err.println("Warning: getConnectedUsers returned null.");
             return;
         }
+
+        double charWidth = getCharWidth();
+        double lineHeight = getLineHeight();
+        double textAreaWidth = textArea.getWidth()-textArea.getPadding().getLeft() - textArea.getPadding().getRight();
+        int charsPerLine = (int)(textAreaWidth/charWidth);
+
         //ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
-        ArrayList<User> users=new ArrayList<>(connectedUsers.values());
+        ArrayList<User> users = new ArrayList<>(connectedUsers.values());
         // Add users to ListView with line number placeholder
-        for (int i = 0; i < connectedUsers.size(); i++) {
-            String username=users.get(i).getUserName();
-            int pos=users.get(i).getCursorPosition();
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
+            String username = users.get(i).getUserName();
+            int pos = Math.min(user.getCursorPosition(),textArea.getText().length());
             if (username != null && !username.trim().isEmpty()) {
-                userListView.getItems().add(username + " (Line: " + pos + ")");
+                userListView.getItems().add(username);// + " (Line: " + pos + ")");
             }
+            if(username.equals((this.username))){continue;}
+            Rectangle rect = cursor.computeIfAbsent(username, k -> {
+                Rectangle r = new Rectangle(getCharWidth()* 0.2 , getLineHeight());
+                r.setVisible(true);
+                return r;
+            });
+
+            try {
+                rect.setFill(Color.web(user.getColor()));
+            } catch (Exception e) {
+                System.err.println("Invalid color for " + username + ": " + user.getColor());
+                rect.setFill(Color.BLACK); // Fallback
+            }
+
+
+            String text = textArea.getText();
+            int remainingPos = pos;
+            int row = 0;
+            int currentLineStart= 0;
+            int col=0;
+
+            while (remainingPos > 0 && currentLineStart < text.length()) {
+                int nextNewline = text.indexOf('\n', currentLineStart);
+                if (nextNewline == -1) nextNewline = text.length();
+                int lineLength = nextNewline - currentLineStart;
+
+                if (remainingPos <= lineLength) {
+                    String line = text.substring(currentLineStart, currentLineStart + remainingPos);
+                    javafx.scene.text.Text textNode = new javafx.scene.text.Text(line);
+                    textNode.setFont(textArea.getFont());
+                    double actualWidth = textNode.getLayoutBounds().getWidth();
+                    col = (int) (actualWidth / charWidth);
+                    break;
+                }
+
+                if (lineLength > charsPerLine) {
+                    row += (lineLength / charsPerLine) + (lineLength % charsPerLine > 0 ? 1 : 0);
+                } else {
+                    row++;
+                }
+                remainingPos -= lineLength + (nextNewline < text.length() ? 1 : 0);
+                currentLineStart = nextNewline + 1;
+            }
+            //int col = remainingPos;
+
+//            if (col > charsPerLine) {
+//                row += col / charsPerLine;
+//                col = col % charsPerLine;
+//            }
+
+            double x = col * charWidth + textArea.getPadding().getLeft() + 10.0 - textArea.getScrollLeft() + (i * 2); // Offset for overlapping cursors
+            double y = row * lineHeight + textArea.getPadding().getTop() + 5.0 - textArea.getScrollTop();;
+
+            //System.out.println("pos: " + pos + ", row: " + row + ", col: " + col + ", charWidth: " + charWidth + ", x: " + x);
+            System.out.println("TextArea width: " + textArea.getWidth() + ", effective width: " + textAreaWidth);
+            System.out.println("Chars per line: " + charsPerLine);
+            System.out.println("User: " + username + ", pos: " + pos + ", row: " + row + ", col: " + col + ", x: " + x + ", y: " + y);
+
+            rect.setX(x);
+            rect.setY(y);
+            cursorOverlay.getChildren().add(rect);
+
         }
+
+        cursor.keySet().retainAll(connectedUsers.keySet());
+
     }
 
     @FXML
@@ -439,6 +528,7 @@ public class SessionController {
         }
         return 0; // Default to start if not found
     }
+
     private void adjustComments() {
         CRDTTree tree = wsController.getDocumentTree();
         System.out.println("Adjusting comments");
@@ -575,5 +665,21 @@ public class SessionController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private double getCharWidth() {
+        javafx.scene.text.Text text = new javafx.scene.text.Text("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        text.setFont(textArea.getFont());
+        double width = text.getLayoutBounds().getWidth() / 52.0; // Average width
+        System.out.println("CharWidth: " + width);
+        return width * 1.1; // again trial and error idk what im doing atp
+    }
+
+    private double getLineHeight() {
+        javafx.scene.text.Text text = new javafx.scene.text.Text("M\nM");
+        text.setFont(textArea.getFont());
+        double height = text.getLayoutBounds().getHeight() / 2.0;
+        return height * 1.3; // trial and error
+
     }
 }
