@@ -70,6 +70,14 @@ public class SessionController {
     private Map<String, Rectangle> cursor = new HashMap<>();
     private Timeline cursorBlinkTimeline;
 
+    // Predefined array of 40 distinct color names
+    private static final String[] COLOR_PALETTE = {
+            "red", "blue", "green", "yellow", "purple", "orange", "pink", "brown", "gray", "cyan",
+            "magenta", "lime", "teal", "indigo", "violet", "maroon", "navy", "olive", "silver", "gold",
+            "coral", "turquoise", "salmon", "plum", "khaki", "aquamarine", "crimson", "darkgreen", "darkblue", "darkcyan",
+            "darkmagenta", "darkorange", "darkred", "darkviolet", "deeppink", "lightblue", "lightgreen", "lightpink", "lightsalmon", "mediumpurple"
+    };
+
     public void initData(WebSocketController wsController, String username, String writerCode, String readerCode, boolean accessPermission) {
         this.wsController = wsController;
         this.username = username;
@@ -175,6 +183,12 @@ public class SessionController {
             User existingUser = wsController.getConnectedUsers().get(username);
             if(existingUser!=null && existingUser.getColor()!=null){
              change.setColor(existingUser.color);
+            }else{
+                String assignedColor = assignColorFromPalette(username);
+                change.setColor(assignedColor);
+                if (existingUser != null) {
+                    existingUser.setColor(assignedColor);
+                }
             }
             //change.setColor(wsController.getConnectedUsers().get(username).getColor());
             //change.setCursor(wsController.getConnectedUsers().get(username).getCursor());
@@ -364,102 +378,218 @@ public class SessionController {
         clipboard.setContent(content);
     }
     private void listConnectedUsers() {
-        if (userListView == null || wsController == null) {
-            System.err.println("Error: userListView or wsController is null, cannot update user list.");
+        // Null checks
+        if (userListView == null || wsController == null || textArea == null || cursorOverlay == null) {
+            System.err.println("Error: One or more components (userListView, wsController, textArea, cursorOverlay) is null.");
             return;
         }
 
+        // Clear existing UI elements
         userListView.getItems().clear();
         cursorOverlay.getChildren().clear();
 
+        // Get connected users
         ConcurrentHashMap<String, User> connectedUsers = wsController.getConnectedUsers();
-        // Get connected users from document
         if (connectedUsers == null) {
             System.err.println("Warning: getConnectedUsers returned null.");
             return;
         }
 
+        // Calculate text metrics
         double charWidth = getCharWidth();
         double lineHeight = getLineHeight();
-        double textAreaWidth = textArea.getWidth()-textArea.getPadding().getLeft() - textArea.getPadding().getRight();
-        int charsPerLine = (int)(textAreaWidth/charWidth);
+        double textAreaWidth = textArea.getWidth() - textArea.getPadding().getLeft() - textArea.getPadding().getRight();
+        int charsPerLine = (int) (textAreaWidth / charWidth);
 
-        //ArrayList<String> names=new ArrayList<>(connectedUsers.keySet());
+        // Debug output for metrics
+        System.out.println("Text metrics - Char width: " + charWidth +
+                ", Line height: " + lineHeight +
+                ", Chars per line: " + charsPerLine +
+                ", Text length: " + textArea.getText().length());
+
+        // Process each user
         ArrayList<User> users = new ArrayList<>(connectedUsers.values());
-        // Add users to ListView with line number placeholder
-        for (int i = 0; i < users.size(); i++) {
-            User user = users.get(i);
-            String username = users.get(i).getUserName();
-            int pos = Math.min(user.getCursorPosition(),textArea.getText().length());
+        for (User user : users) {
+            String username = user.getUserName();
+            int pos = Math.min(user.getCursorPosition(), textArea.getText().length());
+
+            System.out.println("Processing user: " + username + ", pos: " + pos);
+
+            // Add to user list
             if (username != null && !username.trim().isEmpty()) {
-                userListView.getItems().add(username);// + " (Line: " + pos + ")");
+                userListView.getItems().add(username);
             }
-            if(username.equals((this.username))){continue;}
+
+            // Skip current user's cursor
+            if (username.equals(this.username)) continue;
+
+            // Get or create cursor rectangle
             Rectangle rect = cursor.computeIfAbsent(username, k -> {
-                Rectangle r = new Rectangle(getCharWidth()* 0.2 , getLineHeight());
+                Rectangle r = new Rectangle(charWidth * 0.2, lineHeight);
                 r.setVisible(true);
                 return r;
             });
 
+            // Set cursor color
+            String color = user.getColor();
+            if (color == null || color.trim().isEmpty()) {
+                System.out.println("No color for " + username + ", assigning from palette.");
+                color = assignColorFromPalette(username);
+                user.setColor(color); // Update the User object
+                // Notify other clients of the updated user color
+                User updatedUser = new User(username, pos, true);
+                updatedUser.setColor(color);
+                wsController.sendUserChange(updatedUser);
+            }
             try {
-                rect.setFill(Color.web(user.getColor()));
+                if (color == null || color.trim().isEmpty()) {
+                    rect.setFill(Color.web(color));
+                    System.out.println("Set cursor color for " + username + " to " + color);
+                } else {
+                    rect.setFill(Color.web(color));
+                }
             } catch (Exception e) {
-                System.err.println("Invalid color for " + username + ": " + user.getColor());
-                rect.setFill(Color.BLACK); // Fallback
+                System.err.println("Invalid color for " + username + ": " + color + ", using default.");
+                rect.setFill(Color.BLACK);
             }
 
-
+            // Calculate cursor position
             String text = textArea.getText();
             int remainingPos = pos;
             int row = 0;
-            int currentLineStart= 0;
-            int col=0;
+            int col = 0;
+            int currentLineStart = 0;
 
             while (remainingPos > 0 && currentLineStart < text.length()) {
                 int nextNewline = text.indexOf('\n', currentLineStart);
                 if (nextNewline == -1) nextNewline = text.length();
-                int lineLength = nextNewline - currentLineStart;
 
-                if (remainingPos <= lineLength) {
-                    String line = text.substring(currentLineStart, currentLineStart + remainingPos);
-                    javafx.scene.text.Text textNode = new javafx.scene.text.Text(line);
-                    textNode.setFont(textArea.getFont());
-                    double actualWidth = textNode.getLayoutBounds().getWidth();
-                    col = (int) (actualWidth / charWidth);
-                    break;
+                int segmentLength = Math.min(nextNewline - currentLineStart, remainingPos);
+                String lineSegment = text.substring(currentLineStart, currentLineStart + segmentLength);
+
+                int charsProcessed = 0;
+                while (charsProcessed < segmentLength) {
+                    int remainingInSegment = segmentLength - charsProcessed;
+                    int charsThisLine = Math.min(remainingInSegment, charsPerLine - col);
+
+                    if (charsThisLine <= 0) { // Wrap due to charsPerLine
+                        row++;
+                        int wrapPoint = currentLineStart + charsProcessed;
+                        String wrappedText = text.substring(wrapPoint, Math.min(wrapPoint + remainingPos, text.length()));
+                        // Count characters until space or end of segment
+                        int wordLength = 0;
+                        for (int i = 0; i < wrappedText.length() && i < remainingPos; i++) {
+                            if (wrappedText.charAt(i) == ' ') break;
+                            wordLength++;
+                        }
+                        col = wordLength; // Set col to the length of the first word
+                        System.out.println("Debug: Wrap at " + wrapPoint + ", wrappedText='" + wrappedText + "', col set to " + col);
+                        charsProcessed += col; // Move forward by the word length
+                    } else {
+                        charsProcessed += charsThisLine;
+                        col += charsThisLine;
+                        if (col >= charsPerLine) {
+                            row++;
+                            int wrapPoint = currentLineStart + charsProcessed;
+                            String wrappedText = text.substring(wrapPoint, Math.min(wrapPoint + remainingPos, text.length()));
+                            int wordLength = 0;
+                            for (int i = 0; i < wrappedText.length() && i < remainingPos; i++) {
+                                if (wrappedText.charAt(i) == ' ') break;
+                                wordLength++;
+                            }
+                            col = wordLength; // Set col to the length of the wrapped word
+                        }
+                    }
                 }
 
-                if (lineLength > charsPerLine) {
-                    row += (lineLength / charsPerLine) + (lineLength % charsPerLine > 0 ? 1 : 0);
-                } else {
+                remainingPos -= segmentLength;
+
+                // Handle explicit newline
+                if (nextNewline < text.length() && remainingPos > 0) {
                     row++;
+                    col = 0;
+                    remainingPos--;
+                    currentLineStart = nextNewline + 1;
+                } else {
+                    currentLineStart += segmentLength;
                 }
-                remainingPos -= lineLength + (nextNewline < text.length() ? 1 : 0);
-                currentLineStart = nextNewline + 1;
             }
-            //int col = remainingPos;
 
-//            if (col > charsPerLine) {
-//                row += col / charsPerLine;
-//                col = col % charsPerLine;
-//            }
+            // Calculate final pixel position
+            double x = col * charWidth + textArea.getPadding().getLeft() + 10.0 - textArea.getScrollLeft();
+            double y = row * lineHeight + textArea.getPadding().getTop() + 5.0 - textArea.getScrollTop();
 
-            double x = col * charWidth + textArea.getPadding().getLeft() + 10.0 - textArea.getScrollLeft() + (i * 2); // Offset for overlapping cursors
-            double y = row * lineHeight + textArea.getPadding().getTop() + 5.0 - textArea.getScrollTop();;
+            // Boundary checks
+            x = Math.max(0, Math.min(x, textAreaWidth - charWidth));
+            y = Math.max(0, y);
 
-            //System.out.println("pos: " + pos + ", row: " + row + ", col: " + col + ", charWidth: " + charWidth + ", x: " + x);
-            System.out.println("TextArea width: " + textArea.getWidth() + ", effective width: " + textAreaWidth);
-            System.out.println("Chars per line: " + charsPerLine);
-            System.out.println("User: " + username + ", pos: " + pos + ", row: " + row + ", col: " + col + ", x: " + x + ", y: " + y);
+            System.out.println("Final position - User: " + username +
+                    ", pos: " + pos + ", row: " + row +
+                    ", col: " + col + ", x: " + x + ", y: " + y);
 
+            // Set cursor position
             rect.setX(x);
             rect.setY(y);
             cursorOverlay.getChildren().add(rect);
-
         }
+
+        // Clean up disconnected users
         cursor.keySet().retainAll(connectedUsers.keySet());
     }
 
+    private Position calculateCursorPosition(int pos, String text, int charsPerLine, double charWidth, double lineHeight) {
+        int visualRow = 0;
+        int visualCol = 0;
+
+        for (int i = 0; i < pos && i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            if (c == '\n') {
+                // New line
+                visualRow++;
+                visualCol = 0;
+            } else {
+                visualCol++;
+
+                // Handle word wrapping
+                if (visualCol > charsPerLine) {
+                    // Find start of current word
+                    int wordStart = i;
+                    while (wordStart > 0 && !Character.isWhitespace(text.charAt(wordStart - 1))) {
+                        wordStart--;
+                    }
+
+                    // Calculate how many characters we're wrapping
+                    int wrappedChars = i - wordStart + 1;
+                    visualRow++;
+                    visualCol = wrappedChars; // Set to length of wrapped word
+                }
+            }
+        }
+
+        // Calculate pixel position
+        double x = visualCol * charWidth + textArea.getPadding().getLeft() + 1;
+        double y = visualRow * lineHeight + textArea.getPadding().getTop();
+
+        return new Position(x, y);
+    }
+
+    // Helper classes remain the same
+    private static class Position {
+        final double x, y;
+        Position(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private Color getUserColor(User user) {
+        try {
+            return user.getColor() != null ? Color.web(user.getColor()) : Color.BLACK;
+        } catch (Exception e) {
+            return Color.RED;
+        }
+    }
     @FXML
     private void redo() {
         if (!redoStack.isEmpty()) {
@@ -521,7 +651,7 @@ public class SessionController {
         text.setFont(textArea.getFont());
         double width = text.getLayoutBounds().getWidth() / 52.0; // Average width
         System.out.println("CharWidth: " + width);
-        return width * 1.1; // again trial and error idk what im doing atp
+        return width ; // again trial and error idk what im doing atp
     }
 
     private double getLineHeight() {
@@ -530,4 +660,48 @@ public class SessionController {
         double height = text.getLayoutBounds().getHeight() / 2.0;
         return height * 1.3; // trial and error
     }
+//    private int calculateWrappedLines(String text, double maxWidth) {
+//        if (text.isEmpty()) return 0;
+//
+//        javafx.scene.text.Text textNode = new javafx.scene.text.Text(text);
+//        textNode.setFont(textArea.getFont());
+//        double textWidth = textNode.getLayoutBounds().getWidth();
+//
+//        if (textWidth <= maxWidth) {
+//            return 1;
+//        }
+//
+//        // Simulate wrapping by breaking the text into chunks
+//        int wrappedLines = 1;
+//        double currentWidth = 0;
+//        String[] words = text.split("(?<=\\s)|(?=\\s)"); // Split on whitespace boundaries
+//        StringBuilder currentLine = new StringBuilder();
+//
+//        for (String word : words) {
+//            javafx.scene.text.Text wordNode = new javafx.scene.text.Text(currentLine.toString() + word);
+//            wordNode.setFont(textArea.getFont());
+//            double wordWidth = wordNode.getLayoutBounds().getWidth();
+//
+//            if (currentWidth + wordWidth > maxWidth) {
+//                wrappedLines++;
+//                currentWidth = wordWidth;
+//                currentLine = new StringBuilder(word);
+//            } else {
+//                currentWidth += wordWidth;
+//                currentLine.append(word);
+//            }
+//        }
+//
+//        return wrappedLines;
+//    }
+private String assignColorFromPalette(String username) {
+    if (username == null || username.trim().isEmpty()) {
+        return COLOR_PALETTE[0]; // Default to first color if username is null/empty
+    }
+    int hash = Math.abs(username.hashCode());
+    int colorIndex = hash % COLOR_PALETTE.length;
+    return COLOR_PALETTE[colorIndex];
+}
+
+
 }
