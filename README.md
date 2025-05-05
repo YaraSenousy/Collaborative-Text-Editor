@@ -25,18 +25,6 @@ To run this application, you need the following installed on your system:
 5. **IDE**: IntelliJ IDEA, Eclipse, or any IDE with JavaFX and Maven support (optional but recommended).
 6. **WebSocket Client Library**: The client uses `spring-messaging` and `spring-websocket` for WebSocket communication (included via Maven).
 
-## Project Structure
-- `src/main/java/apt/textclient/`
-  - `SessionController.java`: The JavaFX controller for the client UI.
-  - `WebSocketController.java`: Manages WebSocket connections and communication.
-  - `CRDTTree.java`: Implements the CRDT for text editing.
-  - `Node.java`: Represents a node in the CRDT tree.
-  - `User.java`: Represents a connected user.
-  - `Comment.java`: Represents a comment on a text range.
-- `src/main/resources/`
-  - `icons/`: Contains icons for buttons (copy.png, undo.png, redo.png, export.png).
-  - `*.fxml`: JavaFX FXML files for the UI layout (not shown in the code but assumed to exist).
-
 ## Setup Instructions
 
 ### 1. Clone the Repository
