@@ -40,8 +40,13 @@
                 <Label fx:id="readerCodeLabel" style="-fx-font-weight: bold;"/>
                 <Button fx:id="copyReaderCodeButton" text="" onAction="#copyReaderCode" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
             </HBox>
-            <Label text="Active Users" style="-fx-font-weight: bold;"/>
-            <ListView fx:id="userListView"/>
+            <Button fx:id="addCommentButton" text="Add Comment" onAction="#addComment" maxWidth="Infinity" style="-fx-background-color: #2196F3; -fx-text-fill: black; -fx-font-size: 12px;"/>
+            <VBox>
+                <Label text="Users" />
+                <ListView fx:id="userListView" />
+                <Label text="Comments" />
+                <ListView fx:id="commentsListView" />
+            </VBox>
         </VBox>
     </right>
 </BorderPane>

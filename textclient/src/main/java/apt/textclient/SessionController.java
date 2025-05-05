@@ -4,10 +4,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.*;
@@ -37,6 +34,8 @@ public class SessionController {
     @FXML
     private ListView<String> userListView;
     @FXML
+    private ListView<String> commentsListView;
+    @FXML
     private Button exportButton;
     @FXML
     private Button copyWriterCodeButton;
@@ -51,7 +50,10 @@ public class SessionController {
     @FXML
     private Button redoButton;
     @FXML
+
+    private Button addCommentButton;
     private Pane cursorOverlay;
+
 
     private WebSocketController wsController;
     private String username;
@@ -116,6 +118,9 @@ public class SessionController {
 //        });
 
         wsController.setOnUsersChange(this::listConnectedUsers);
+        wsController.setOnCommentChange(this::updateComments);
+        updateComments();
+        setupCommentListener();
         Platform.runLater(() -> {
             Window window = textArea.getScene().getWindow();
             window.setOnCloseRequest(event -> {
@@ -136,6 +141,7 @@ public class SessionController {
         );
         cursorRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
         cursorRefreshTimeline.play();
+
     }
 
     private void handleWindowClosing() {
@@ -324,12 +330,17 @@ public class SessionController {
             isUpdatingTextArea = true;
             try {
                 System.out.println("Updating screen");
-                CRDTTree tree = wsController.getDocumentTree(); // Ensure we get the latest tree
+                CRDTTree tree = wsController.getDocumentTree();
                 List<Character> chars = tree.traverse();
                 StringBuilder content = new StringBuilder();
                 chars.forEach(content::append);
-                textArea.setText(content.toString());
-                textArea.positionCaret(Math.min(expectedCaretPosition, content.length()));
+                String newText = content.toString();
+                textArea.setText(newText);
+                textArea.positionCaret(Math.min(expectedCaretPosition, newText.length()));
+
+                // Adjust comments based on the text change
+                adjustComments();
+                updateComments();
             } finally {
                 isUpdatingTextArea = false;
             }
@@ -457,7 +468,9 @@ public class SessionController {
             cursorOverlay.getChildren().add(rect);
 
         }
+
         cursor.keySet().retainAll(connectedUsers.keySet());
+
     }
 
     @FXML
@@ -516,6 +529,144 @@ public class SessionController {
         return 0; // Default to start if not found
     }
 
+    private void adjustComments() {
+        CRDTTree tree = wsController.getDocumentTree();
+        System.out.println("Adjusting comments");
+        ConcurrentHashMap<String, Comment> comments = wsController.getComments();
+        if (comments == null) {
+            return;
+        }
+
+        List<String> commentsToRemove = new ArrayList<>();
+        for (Map.Entry<String, Comment> entry : comments.entrySet()) {
+            Comment comment = entry.getValue();
+            Node startNode = tree.getNodeMap().get(comment.getStartNodeId());
+            Node endNode = tree.getNodeMap().get(comment.getEndNodeId());
+
+            // Remove comment if either start or end node is deleted or doesn't exist
+            if (startNode == null || endNode == null || startNode.isDeleted || endNode.isDeleted) {
+                commentsToRemove.add(entry.getKey());
+                continue;
+            }
+
+            // Compute new positions by traversing the tree
+            List<Node> nodesInOrder = new ArrayList<>();
+            traverseForNodes(tree.getRoot(), nodesInOrder);
+            int startPos = -1;
+            int endPos = -1;
+            for (int i = 0; i < nodesInOrder.size(); i++) {
+                Node node = nodesInOrder.get(i);
+                if (node.getId().equals(comment.getStartNodeId())) {
+                    startPos = i;
+                }
+                if (node.getId().equals(comment.getEndNodeId())) {
+                    endPos = i;
+                    break;
+                }
+            }
+
+            // If positions couldn't be determined, mark for removal
+            if (startPos == -1 || endPos == -1) {
+                commentsToRemove.add(entry.getKey());
+            } else {
+                comment.setStartPosition(startPos);
+                comment.setEndPosition(endPos + 1); // End position is exclusive
+            }
+        }
+
+        // Remove comments and notify others
+        for (String commentId : commentsToRemove) {
+            Comment comment = comments.get(commentId);
+            if (comment != null) {
+                Comment deleteComment = new Comment(comment.getUser(), comment.getText(), comment.getStartNodeId(), comment.getEndNodeId(), 1);
+                deleteComment.setId(comment.getId());
+                wsController.sendComment(deleteComment); // Notify others
+                comments.remove(commentId); // Remove locally
+            }
+        }
+    }
+    private void setupCommentListener() {
+        if (addCommentButton != null) {
+            addCommentButton.setOnAction(event -> addComment());
+        }
+
+        if (commentsListView != null) {
+            commentsListView.setOnMouseClicked(event -> {
+                String selectedComment = commentsListView.getSelectionModel().getSelectedItem();
+                if (selectedComment != null) {
+                    // Fetch the current list of comments to ensure it's up-to-date
+                    ConcurrentHashMap<String, Comment> comments = wsController.getComments();
+                    if (comments != null) {
+                        for (Comment comment : comments.values()) {
+                            if (comment.toString().equals(selectedComment)) {
+                                // Highlight the range in the TextArea
+                                textArea.selectRange(comment.getStartPosition(), comment.getEndPosition());
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    @FXML
+    private void addComment() {
+        if (!accessPermission) {
+            showAlert("Permission Denied", "You do not have permission to add comments.");
+            return;
+        }
+
+        int startPosition = textArea.getSelection().getStart();
+        int endPosition = textArea.getSelection().getEnd();
+        if (startPosition == endPosition) {
+            showAlert("No Selection", "Please select a range of text to comment on.");
+            return;
+        }
+
+        // Find the start and end node IDs for the selected range
+        CRDTTree tree = wsController.getDocumentTree();
+        String startNodeId = findNodeIdAtPosition(tree, startPosition);
+        String endNodeId = findNodeIdAtPosition(tree, endPosition - 1);
+        if (startNodeId == null || endNodeId == null) {
+            showAlert("Invalid Selection", "Cannot add comment: selected range is invalid.");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Add Comment");
+        dialog.setHeaderText("Enter your comment for range " + startPosition + "-" + endPosition);
+        dialog.setContentText("Comment:");
+        Optional<String> result = dialog.showAndWait();
+
+        result.ifPresent(commentText -> {
+            Comment comment = new Comment(username, commentText, startNodeId, endNodeId, 0);
+            comment.setStartPosition(startPosition);
+            comment.setEndPosition(endPosition);
+            wsController.getComments().put(comment.getId(), comment);
+            wsController.sendComment(comment);
+            updateComments();
+        });
+    }
+
+    private void updateComments() {
+        if (commentsListView != null) {
+            commentsListView.getItems().clear();
+            ArrayList<Comment> comments=new ArrayList<>(wsController.getComments().values());
+            comments.sort(Comparator.comparing(Comment::getStartPosition));
+            for (Comment comment : comments) {
+                commentsListView.getItems().add(comment.toString());
+            }
+        }
+    }
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
     private double getCharWidth() {
         javafx.scene.text.Text text = new javafx.scene.text.Text("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
         text.setFont(textArea.getFont());
@@ -529,5 +680,6 @@ public class SessionController {
         text.setFont(textArea.getFont());
         double height = text.getLayoutBounds().getHeight() / 2.0;
         return height * 1.3; // trial and error
+
     }
 }
