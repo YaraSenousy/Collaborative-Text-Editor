@@ -16,6 +16,7 @@ public class Document {
     String writePassword;
     ConcurrentLinkedQueue<Node> changesNodes = new ConcurrentLinkedQueue<>();
     ConcurrentHashMap<String,User> connectedUsers=new ConcurrentHashMap<>();
+    ConcurrentHashMap<String,Comment> comments=new ConcurrentHashMap<>();
 
     public void addChange(Node change) {
         changesNodes.add(change);

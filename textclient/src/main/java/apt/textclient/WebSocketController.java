@@ -27,6 +27,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 @Getter
 @Setter
 public class WebSocketController {
+    private String SERVER_URL="localhost";
     private StompSession stompSession;
     private String username;
     private String docId;
@@ -35,9 +36,12 @@ public class WebSocketController {
     private Runnable onDocumentChange;
     private Runnable onUsersChange;
     private ConcurrentHashMap<String, User> connectedUsers;
+    private Runnable onCommentChange;
+    private ConcurrentHashMap<String,Comment> comments;
 
-    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers) {
+    public void initializeData( String username,String docId,ConcurrentHashMap<String,User> connectedUsers,ConcurrentHashMap<String,Comment> comments) {
         this.username = username;
+        this.comments = comments;
         this.docId = docId;
         this.connectedUsers=connectedUsers;
         connectToWebSocket(username, docId);
@@ -67,6 +71,17 @@ public class WebSocketController {
             Platform.runLater(onUsersChange);
         }
     }
+    private void handleComment(Comment newComment){
+        if(newComment.getOperation() == 0) {
+           comments.put(newComment.getId(),newComment);
+        }else{
+            comments.remove(newComment.getId());
+        }
+        if (onCommentChange != null) {
+            Platform.runLater(onCommentChange);
+        }
+    }
+
     public void sendDisconnected() {
         // Send disconnection message
         User disconnectMessage = new User(username, 0, false);
@@ -84,7 +99,7 @@ public class WebSocketController {
             converters.add(new MappingJackson2MessageConverter());
             stompClient.setMessageConverter(new CompositeMessageConverter(converters));
 
-            String url = "ws://localhost:8080/ws";
+            String url = "ws://"+SERVER_URL+":8080/ws";
             StompSessionHandler sessionHandler = new MyStompSessionHandler();
 
             // Add connection callback
@@ -132,6 +147,25 @@ public class WebSocketController {
 
                                 }
                             });
+                            // Subscribe to the comments
+                            topic = "/topic/comment/" + docId;
+                            stompSession.subscribe(topic, new StompFrameHandler() {
+
+                                @Override
+                                public Type getPayloadType(StompHeaders headers) {
+                                    return Comment.class; // Expected payload type
+                                }
+                                @Override
+                                public void handleFrame(StompHeaders headers, Object payload) {
+                                    try{
+                                        Comment comment = (Comment) payload;
+                                        handleComment(comment);}
+                                    catch(Exception e){
+                                        System.err.println(e.getMessage());
+                                    }
+
+                                }
+                            });
                             sendUserChange(new User(username, 0,true));
                         }
                         @Override
@@ -167,6 +201,13 @@ public class WebSocketController {
     public void sendUserChange(User newChange){
         if (stompSession != null && stompSession.isConnected()) {
             stompSession.send("/app/change/" + docId, newChange);
+        } else {
+            System.err.println("STOMP session not connected");
+        }
+    }
+    public void sendComment(Comment comment) {
+        if (stompSession != null && stompSession.isConnected()) {
+            stompSession.send("/app/comment/" + docId, comment);
         } else {
             System.err.println("STOMP session not connected");
         }

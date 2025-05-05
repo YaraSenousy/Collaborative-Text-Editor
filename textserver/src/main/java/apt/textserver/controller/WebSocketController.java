@@ -1,6 +1,9 @@
 package apt.textserver.controller;
 
+
+import apt.textserver.model.Comment;
 import apt.textserver.model.Node;
+
 import apt.textserver.model.User;
 import apt.textserver.service.DocumentService;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -31,5 +34,13 @@ public class WebSocketController {
         System.out.println("recieved change from user: "+change.getUserName());
         documentService.changeCursor(docId, change);
         return change;
+    }
+
+    @MessageMapping("/comment/{docId}")
+    @SendTo("/topic/comment/{docId}")
+    public Comment handleComment(Comment comment, @DestinationVariable String docId) {
+        System.out.println("recieved comment from user: "+comment.getText());
+        documentService.changeComment(docId,comment);
+        return comment;
     }
 }
