@@ -8,6 +8,8 @@ This is a collaborative text editing application built using JavaFX for the fron
 - Undo/Redo functionality for text edits.
 - Exporting the document as a text file.
 
+![Two clients editing the same document, each listing both connected users](docs/screenshot.png)
+
 The application consists of:
 - **Client**: A JavaFX application (`SessionController`) that provides the UI for editing and commenting.
 - **Server**: A Spring Boot application with WebSocket support (`WebSocketController`) for real-time communication.
